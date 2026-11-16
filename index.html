@@ -1,0 +1,1120 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#087f75"><meta name="description" content="Airport Operations Management System — interactive presentation prototype with fictional data.">
+  <title>AEROPS · Airport Operations</title>
+  <style>@charset "UTF-8";
+@layer reset, base, layout, components, responsive;
+
+/* Keep hidden accessibility labels inside the viewport, even in scrollable tables. */
+.sr-only { left:0!important; top:0!important; }
+
+@layer components {
+  .demo-clock { display:flex; align-items:center; gap:7px; color:var(--muted); font-size:11px; white-space:nowrap; }
+  .demo-clock input { width:94px; padding:6px 8px; min-height:34px; font-size:12px; }
+  .bar-chart:has(> .bar-column) { overflow-x:auto; }
+  .bar-column { min-width:24px; }
+}
+@layer responsive {
+  @media (max-width:1100px) {
+    .demo-clock span, .top-demo { display:none; }
+    .demo-clock input { width:82px; }
+    .topbar-actions { gap:8px; }
+    .breadcrumb strong { max-width:140px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  }
+  @media (max-width:550px) {
+    .topbar .breadcrumb > span, .topbar .breadcrumb > strong, .topbar .breadcrumb > svg { display:none; }
+    .topbar .topbar-actions { flex:1; justify-content:flex-end; gap:5px; }
+    .demo-clock input { width:80px; font-size:11px; }
+  }
+  @media print { .demo-clock { display:none; } }
+}
+
+@layer reset {
+  *, *::before, *::after { box-sizing: border-box; }
+  html, body { margin: 0; min-height: 100%; }
+  button, input, select, textarea { font: inherit; }
+  button { cursor: pointer; }
+  img, svg { vertical-align: middle; }
+  a { color: inherit; text-decoration: none; }
+  button, a, input, select, textarea { -webkit-tap-highlight-color: transparent; }
+  [hidden] { display: none !important; }
+}
+
+@layer base {
+  :root { --canvas:#f5f6f8; --surface:#fff; --ink:#172b36; --muted:#7a8790; --line:#e9edef; --teal:#087f75; --teal-dark:#05685f; --teal-soft:#e9f5f1; --amber:#b7791f; --red:#c34848; --radius:12px; --shadow:0 5px 20px #20303c05; }
+  body { background:var(--canvas); color:var(--ink); font-family:"Segoe UI",Tahoma,Arial,sans-serif; font-size:13px; line-height:1.6; -webkit-font-smoothing:antialiased; }
+  button, input, select, textarea { color:inherit; }
+  button { background:none; border:0; }
+  input, select, textarea { border:1px solid #dfe5e8; background:#fff; border-radius:7px; padding:10px 12px; outline:none; min-width:0; }
+  input::placeholder, textarea::placeholder { color:#9aa5ac; }
+  input:focus, select:focus, textarea:focus { border-color:#4f9b92; box-shadow:0 0 0 3px #087f7510; }
+  textarea { resize:vertical; min-height:86px; }
+  button:disabled { cursor:not-allowed; opacity:.45; }
+  :focus-visible { outline:3px solid #28a99788; outline-offset:3px; }
+  h1,h2,h3,h4,p { margin:0; }
+  h2 { font-size:16px; font-weight:650; }
+  h3 { font-size:14px; font-weight:650; }
+  svg { flex-shrink:0; width:18px; height:18px; }
+  .muted { color:var(--muted); }
+  .small, small { font-size:11px; }
+  .mono { font-family:Consolas,"SFMono-Regular",monospace; letter-spacing:-.2px; }
+  .helper { color:var(--muted); font-size:12px; line-height:1.7; }
+  .eyebrow { color:var(--teal); font-size:10px; letter-spacing:1.8px; font-weight:700; text-transform:uppercase; margin-bottom:8px; }
+}
+
+@layer layout {
+  .app-shell { display:flex; min-height:100vh; }
+  .sidebar { width:232px; flex:0 0 232px; position:fixed; top:0; bottom:0; left:0; background:var(--surface); border-right:1px solid var(--line); padding:28px 15px 16px; z-index:40; display:flex; flex-direction:column; overflow-y:auto; }
+  .workspace { width:calc(100% - 232px); margin-left:232px; min-width:0; }
+  .topbar { height:76px; background:var(--surface); border-bottom:1px solid var(--line); display:flex; align-items:center; justify-content:space-between; padding:0 34px; gap:16px; position:sticky; top:0; z-index:25; }
+  .page-content { max-width:1760px; margin:0 auto; padding:32px 34px 40px; }
+  .page-heading { display:flex; justify-content:space-between; align-items:flex-start; gap:20px; margin-bottom:26px; }
+  .page-title { font-size:29px; font-weight:650; line-height:1.35; letter-spacing:-.7px; }
+  .page-subtitle { color:var(--muted); margin-top:7px; font-size:12px; }
+  .heading-actions { display:flex; gap:9px; align-items:center; padding-top:14px; flex-shrink:0; }
+  .stat-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:17px; margin-bottom:24px; }
+  .dashboard-grid { display:grid; grid-template-columns:minmax(0,1fr) 290px; gap:22px; align-items:start; }
+  .dashboard-grid > * { min-width:0; }
+  .dashboard-grid > :first-child > .panel + .panel { margin-top:22px; }
+  .dashboard-grid > :last-child > .panel + .panel { margin-top:20px; }
+  .detail-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:14px; }
+  .form-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; }
+  .full { grid-column:1/-1; }
+}
+
+@layer components {
+  .brand { display:flex; align-items:center; gap:10px; margin:0 9px 34px; font-size:21px; line-height:1; font-weight:750; letter-spacing:1.4px; }
+  .brand > div:last-child small, .brand small { display:block; color:#8e9aa0; font-size:8px; font-weight:500; letter-spacing:1.2px; margin-top:7px; }
+  .brand-mark { background:var(--teal); border-radius:9px; width:36px; height:36px; color:#fff; display:grid; place-items:center; box-shadow:0 3px 8px #087f751a; }
+  .brand-mark svg { width:22px; height:22px; }
+  .nav-section { margin:0 12px 10px; padding-top:20px; color:#a0aab0; text-transform:uppercase; font-size:9px; font-weight:650; letter-spacing:1.5px; }
+  .nav-item { display:flex; align-items:center; gap:11px; width:100%; min-height:43px; padding:11px 13px; margin:3px 0; border-radius:7px; color:#7b8790; font-size:12px; font-weight:500; text-align:left; position:relative; transition:background .15s,color .15s; }
+  .nav-item:hover { color:var(--ink); background:#f5f7f7; }
+  .nav-item.active { background:var(--teal-soft); color:var(--teal); font-weight:650; }
+  .nav-item.active::before { content:""; position:absolute; left:-15px; top:13px; bottom:13px; width:3px; background:var(--teal); border-radius:0 3px 3px 0; }
+  .nav-icon { display:flex; color:#8e9aa1; }
+  .nav-item.active .nav-icon { color:var(--teal); }
+  .nav-label { flex:1; min-width:0; }
+  .nav-count { color:#8b989e; font-size:10px; min-width:20px; border-radius:4px; background:#f1f3f4; padding:0 4px; text-align:center; }
+  .nav-item.active .nav-count { color:var(--teal); background:#d9ebe5; }
+  .sidebar-bottom { margin-top:auto; padding:28px 9px 0; }
+  .sidebar-bottom .btn { margin-top:9px; width:100%; justify-content:flex-start; }
+  .demo-badge { display:inline-flex; align-items:center; gap:6px; color:var(--teal); font-size:9px; font-weight:700; letter-spacing:1px; background:var(--teal-soft); border-radius:4px; padding:4px 7px; }
+  .sidebar-bottom p { margin-top:8px; font-size:10px; color:#95a0a6; line-height:1.7; }
+  .breadcrumb { color:#8b969d; font-size:12px; display:flex; align-items:center; gap:11px; min-width:0; }
+  .breadcrumb strong { font-weight:600; color:#53646f; }
+  .breadcrumb svg { width:14px; height:14px; }
+  .topbar-actions { display:flex; align-items:center; gap:16px; }
+  .role-select { padding:7px 28px 7px 10px; font-size:11px; color:#53646f; border:1px solid var(--line); background:#fafbfb; max-width:220px; }
+  .avatar { display:grid; place-items:center; width:33px; height:33px; border-radius:50%; background:#eaf0ee; border:3px solid #fff; outline:1px solid #e3e8e6; color:var(--teal); font-size:11px; font-weight:700; }
+  .icon-button { width:34px; height:34px; display:inline-grid; place-items:center; border-radius:7px; color:#7c8a94; position:relative; }
+  .icon-button:hover { background:#f2f6f5; color:var(--teal); }
+  .icon-button .dot, .notification-dot { width:6px; height:6px; background:#e0a15c; border:1.5px solid #fff; border-radius:50%; position:absolute; top:6px; right:8px; }
+  .menu-toggle { display:none; }
+  .stat-card { border:1px solid var(--line); background:var(--surface); padding:20px 20px 15px; border-radius:var(--radius); box-shadow:var(--shadow); }
+  .stat-top { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:10px; }
+  .stat-icon { width:33px; height:33px; display:grid; place-items:center; color:var(--teal); background:#edf7f4; border-radius:8px; }
+  .stat-icon.amber { background:#fef5e8; color:#c38b34; }
+  .stat-icon.blue { background:#eef3fa; color:#5680ab; }
+  .stat-icon.purple { background:#f1eff8; color:#8d77b4; }
+  .stat-value { font-size:31px; font-weight:600; letter-spacing:-1.2px; line-height:1.35; color:#203740; }
+  .stat-label { color:#87939b; font-size:11px; }
+  .stat-foot { margin-top:10px; color:#9ba5aa; font-size:10px; display:flex; align-items:center; gap:6px; }
+  .stat-foot strong { color:var(--teal); font-weight:600; }
+  .stat-foot .amber, .stat-foot.amber { color:#bd8b3c; }
+  .panel { background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); box-shadow:var(--shadow); overflow:hidden; }
+  .panel + .panel { margin-top:22px; }
+  .panel-head { padding:21px 22px 16px; display:flex; align-items:center; justify-content:space-between; gap:14px; }
+  .panel-title { font-size:14px; color:#273c46; font-weight:650; letter-spacing:-.2px; }
+  .panel-head .muted { margin-top:3px; font-size:10px; }
+  .panel-body { padding:0 22px 22px; }
+  .toolbar { display:flex; align-items:center; gap:10px; padding:0 22px 17px; flex-wrap:wrap; }
+  .toolbar > select { font-size:11px; padding:7px 11px; min-height:34px; }
+  .toolbar .search-input { margin-right:auto; }
+  .search-input { font-size:11px; min-height:34px; padding:8px 11px; width:220px; background:#fafbfc; }
+  .table-wrap { overflow-x:auto; width:100%; scrollbar-width:thin; }
+  .data-table { width:100%; border-collapse:collapse; font-size:11px; text-align:left; white-space:nowrap; }
+  .data-table th { text-transform:uppercase; color:#8c99a1; font-size:9px; letter-spacing:.45px; font-weight:600; background:#fafbfc; padding:12px 17px; border-top:1px solid #f0f2f3; border-bottom:1px solid var(--line); }
+  .data-table td { border-bottom:1px solid #eff2f3; padding:15px 17px; vertical-align:middle; color:#526670; }
+  .data-table th:first-child, .data-table td:first-child { padding-left:22px; }
+  .data-table th:last-child, .data-table td:last-child { padding-right:22px; }
+  .data-table tr:last-child td { border-bottom:0; }
+  .data-table tbody tr:hover { background:#fbfdfc; }
+  .data-table td .muted { color:#9ba5ab; font-size:10px; }
+  .data-table td strong { font-weight:600; color:#304651; }
+  .data-table .btn { white-space:nowrap; }
+  .flight-cell { display:flex; align-items:center; gap:10px; }
+  .flight-cell > div:last-child { display:flex; flex-direction:column; gap:1px; }
+  .airline-logo { display:inline-grid; place-items:center; width:31px; height:31px; border-radius:7px; background:#f0eaf7; color:#77529c; font-weight:750; font-size:10px; letter-spacing:-.3px; flex:0 0 auto; }
+  .airline-logo.purple { background:#f2eaf8; color:#8253a4; }
+  .airline-logo.red { background:#feeeed; color:#cc5a52; }
+  .airline-logo.blue { background:#edf3fc; color:#4e7db4; }
+  .airline-logo.green { background:#e9f5ee; color:#388464; }
+  .route { display:inline-flex; align-items:center; gap:8px; color:#46606b; }
+  .route svg { width:12px; height:12px; color:#a4afb4; }
+  .btn { display:inline-flex; align-items:center; justify-content:center; gap:7px; border:1px solid #e1e7e8; background:#fff; border-radius:7px; padding:9px 13px; color:#61717b; font-size:11px; line-height:1.6; font-weight:500; transition:background .15s,border-color .15s,transform .15s; min-height:35px; }
+  .btn:hover { background:#f6f9f8; border-color:#bfcdc9; color:#2c6158; }
+  .btn:active { transform:translateY(1px); }
+  .btn svg { width:14px; height:14px; }
+  .btn-primary { background:var(--teal); color:#fff; border-color:var(--teal); box-shadow:0 2px 5px #087f7512; }
+  .btn-primary:hover { background:var(--teal-dark); color:#fff; border-color:var(--teal-dark); }
+  .btn-ghost { background:transparent; border-color:transparent; color:#87959b; padding-left:9px; padding-right:9px; }
+  .btn-ghost:hover { background:#f2f7f5; border-color:transparent; }
+  .btn-danger { background:#fff4f3; color:#c05751; border-color:#f4dedb; }
+  .btn-danger:hover { background:#fce8e6; border-color:#ebc4be; color:#b54f48; }
+  .btn-sm { min-height:28px; padding:5px 9px; font-size:10px; border-radius:5px; }
+  .badge, .pill { display:inline-flex; align-items:center; justify-content:center; gap:5px; padding:3px 8px; border-radius:5px; font-size:9px; font-weight:500; line-height:1.7; white-space:nowrap; background:#eff2f4; color:#8a98a1; }
+  .badge.green, .pill.green { color:#328568; background:#edf7f0; }
+  .badge.amber, .pill.amber { color:#b4863a; background:#fff6e7; }
+  .badge.blue, .pill.blue { color:#5d85b0; background:#eef4fb; }
+  .badge.red, .pill.red { color:#c36a60; background:#fff0ee; }
+  .badge.gray, .pill.gray { color:#8b98a0; background:#f1f3f5; }
+  .badge.purple, .pill.purple { color:#9373ae; background:#f5effa; }
+  .segmented { display:inline-flex; align-items:center; padding:3px; gap:2px; background:#f3f5f6; border-radius:7px; }
+  .segment { padding:5px 10px; border-radius:5px; font-size:10px; color:#8a969e; white-space:nowrap; }
+  .segment.active { background:#fff; color:#39535e; box-shadow:0 1px 4px #253d4910; }
+  .tabs, .subtabs { display:flex; gap:22px; border-bottom:1px solid var(--line); margin-bottom:22px; overflow-x:auto; }
+  .tab, .subtabs > button { padding:12px 2px; border-bottom:2px solid transparent; color:#8a979f; white-space:nowrap; font-size:12px; }
+  .tab.active, .subtabs > button.active { color:var(--teal); border-bottom-color:var(--teal); font-weight:600; }
+  .empty { padding:44px 22px; color:#91a0a8; text-align:center; font-size:12px; }
+  .empty svg { display:block; margin:0 auto 12px; width:30px; height:30px; color:#b7c7c5; }
+  .live-dot { display:inline-block; width:5px; height:5px; border-radius:50%; background:#30a18c; margin-right:4px; }
+  .section-heading { display:flex; align-items:center; justify-content:space-between; gap:12px; margin:24px 0 14px; }
+  .section-heading:first-child { margin-top:0; }
+  .timeline { margin:0; padding:5px 0; list-style:none; }
+  .timeline-item { display:flex; gap:12px; padding:0 0 22px; position:relative; }
+  .timeline-item:last-child { padding-bottom:0; }
+  .timeline-item::before { content:""; position:absolute; width:1px; background:#e3eeeb; left:5px; top:12px; bottom:0; }
+  .timeline-item:last-child::before { display:none; }
+  .timeline-dot { width:11px; height:11px; border-radius:50%; border:3px solid #e8f3ee; background:#5d9f8c; margin-top:4px; flex:0 0 11px; position:relative; z-index:1; }
+  .timeline-time { color:#99a5ab; font-size:10px; }
+  .timeline-content { font-size:12px; color:#5f737d; flex:1; }
+  .timeline-content strong { display:block; font-size:12px; font-weight:600; color:#3e5661; }
+  .timeline-content p { margin-top:2px; }
+  .alert-card { display:flex; gap:10px; padding:13px 12px; margin:0 17px 10px; border-radius:8px; background:#f7faf9; border:1px solid #edf3f0; }
+  .alert-card:last-child { margin-bottom:19px; }
+  .alert-card.warning { background:#fffbf4; border-color:#f7ecd8; }
+  .alert-card.danger { background:#fff7f5; border-color:#f8e6e1; }
+  .alert-card.info { background:#f5f9fc; border-color:#e8f0f8; }
+  .alert-icon { display:grid; place-items:center; width:24px; height:24px; border-radius:6px; background:#f8edda; color:#b89048; flex:0 0 auto; }
+  .alert-icon svg { width:13px; height:13px; }
+  .alert-card.danger .alert-icon { background:#f9e7e2; color:#bc7767; }
+  .alert-card.info .alert-icon { background:#e6eff8; color:#7295b4; }
+  .alert-content { min-width:0; }
+  .alert-content strong { color:#69706b; font-size:11px; font-weight:600; }
+  .alert-content p { margin-top:4px; color:#99968c; font-size:10px; line-height:1.7; }
+  .alert-content .btn { margin:7px 0 0; }
+  .activity-list { padding:0 22px 18px; }
+  .activity-item { display:flex; align-items:flex-start; gap:11px; padding:12px 0; border-bottom:1px solid #f0f3f4; color:#7d8e96; font-size:10px; }
+  .activity-item:last-child { border:0; }
+  .activity-item .activity-icon { display:grid; place-items:center; width:28px; height:28px; border-radius:50%; background:#f3f7f5; color:#83a497; flex:0 0 auto; }
+  .activity-item .activity-icon svg { width:12px; height:12px; }
+  .activity-item strong { color:#526a74; font-size:11px; font-weight:500; }
+  .activity-item time, .activity-item .muted { display:block; font-size:9px; color:#a4aeb3; margin-top:3px; }
+  .progress { height:5px; background:#edf2f1; border-radius:10px; overflow:hidden; }
+  .progress-fill { height:100%; background:#4a9d88; border-radius:10px; transition:width .4s; }
+  .resource-summary { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:16px; padding:0 22px 20px; }
+  .resource-mini { border:1px solid #edf1f0; background:#fdfefe; padding:13px; border-radius:8px; }
+  .resource-mini strong { display:block; margin:5px 0; font-size:18px; font-weight:600; color:#48626a; }
+  .resource-mini .progress { margin-top:10px; height:4px; }
+  .resource-grid { padding:0 22px 22px; overflow-x:auto; }
+  .resource-row { display:grid; grid-template-columns:88px minmax(380px,1fr); align-items:center; min-height:47px; border-bottom:1px solid #edf1f2; gap:15px; }
+  .resource-label { color:#657c85; font-size:11px; }
+  .resource-label strong { display:block; font-size:12px; font-weight:600; }
+  .time-grid, .resource-track { position:relative; min-height:32px; background:repeating-linear-gradient(90deg,transparent 0,transparent calc(12.5% - 1px),#eef2f3 calc(12.5% - 1px),#eef2f3 12.5%); }
+  .resource-ticks { display:flex; justify-content:space-between; font-size:9px; color:#9aa7ad; padding:0 0 10px 103px; min-width:483px; }
+  .booking { position:absolute; top:4px; height:25px; min-width:24px; border-radius:4px; display:flex; align-items:center; justify-content:center; overflow:hidden; padding:0 7px; background:#e3f1ec; border-left:2px solid #66a891; color:#5d9485; font-size:9px; white-space:nowrap; }
+  .booking.teal { background:#e3f1ec; border-left-color:#66a891; color:#5d9485; }
+  .booking.amber { background:#fff1d9; border-left-color:#d9b165; color:#b79859; }
+  .booking.blue { background:#eaf0fa; border-left-color:#88a7cb; color:#7395b8; }
+  .resource-legend { display:flex; flex-wrap:wrap; align-items:center; gap:16px; padding:13px 22px; border-top:1px solid var(--line); color:#93a1a8; font-size:9px; }
+  .resource-legend i { display:inline-block; width:7px; height:7px; border-radius:2px; margin-right:5px; background:#87b5a8; }
+  .resource-legend i.amber { background:#dfc280; }
+  .resource-legend i.blue { background:#9bb5d3; }
+  .info-item { padding:14px; border:1px solid var(--line); border-radius:8px; font-size:13px; }
+  .info-item > span, .info-item > small, .info-item > label { display:block; color:#94a0a6; font-size:10px; margin-bottom:5px; }
+  .info-item strong { font-weight:600; color:#435d68; }
+  .flight-hero { padding:21px; border-radius:10px; background:linear-gradient(115deg,#f0f7f4,#f7fafb); border:1px solid #e3eeea; margin-bottom:20px; }
+  .route-display { display:flex; align-items:center; justify-content:space-between; gap:20px; }
+  .airport-code { font-size:30px; font-weight:600; letter-spacing:1px; color:#345a60; }
+  .hero-plane { flex:1; text-align:center; position:relative; }
+  .hero-plane::before { content:""; position:absolute; left:10%; right:10%; top:50%; border-top:1px dashed #b3cec3; }
+  .hero-plane svg { background:#f1f7f5; width:26px; height:26px; padding:4px; position:relative; color:#5f9d8b; }
+  .list-row { display:flex; align-items:center; justify-content:space-between; gap:16px; border-bottom:1px solid #edf1f2; padding:14px 0; }
+  .list-row:last-child { border-bottom:0; }
+  .task-board { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); align-items:start; gap:20px; }
+  .task-column { background:#eff2f3; border:1px solid #e7edee; padding:16px; border-radius:11px; min-height:280px; }
+  .task-column > h3 { margin-bottom:16px; display:flex; align-items:center; justify-content:space-between; color:#71838b; font-size:11px; }
+  .task-card { background:#fff; border:1px solid #e5ebeb; border-radius:9px; padding:17px; margin-bottom:12px; box-shadow:0 2px 5px #1b353c03; }
+  .task-card h3 { color:#425d66; margin:10px 0; font-size:13px; }
+  .task-card .btn { margin-top:12px; }
+  .task-meta { font-size:10px; color:#8d9ba2; display:flex; align-items:center; gap:7px; flex-wrap:wrap; margin-top:7px; }
+  .task-meta svg { width:12px; height:12px; }
+  .field { display:flex; flex-direction:column; gap:6px; font-size:11px; font-weight:500; color:#60747e; min-width:0; }
+  .field input, .field select, .field textarea { width:100%; font-size:12px; font-weight:400; min-height:40px; }
+  .field .helper { font-size:10px; font-weight:400; }
+  .warning-box, .error-box { padding:12px 15px; border:1px solid #f1dfbb; background:#fffbf3; color:#a18551; border-radius:8px; font-size:11px; line-height:1.8; margin:0 0 16px; }
+  .error-box { color:#b76459; background:#fff5f2; border-color:#f2dcd6; }
+  .check-row { display:flex; align-items:center; gap:9px; padding:10px 0; font-size:12px; color:#70848e; }
+  .check-row input { accent-color:var(--teal); }
+  .staff-card,.equipment-card { background:#fff; border:1px solid var(--line); border-radius:10px; padding:18px; }
+  .staff-card .avatar { margin-bottom:11px; }
+  .staff-card h3,.equipment-card h3 { margin-bottom:7px; }
+  .presentation-banner { display:flex; align-items:center; justify-content:space-between; gap:18px; padding:14px 18px; margin-bottom:23px; background:#edf5f1; border:1px solid #dcece4; border-radius:9px; color:#629080; font-size:11px; }
+  .presentation-banner strong { color:#3f7e69; font-weight:600; }
+  .presentation-banner .btn { background:#ffffffa8; border-color:#d5e4de; color:#487c69; }
+  .guide-list { list-style:none; padding:0; margin:0; }
+  .guide-step { display:flex; gap:15px; align-items:flex-start; padding:16px 0; border-bottom:1px solid #edf1ef; }
+  .guide-step:last-child { border:0; }
+  .guide-number { width:30px; height:30px; border-radius:50%; display:grid; place-items:center; flex:0 0 auto; background:#edf5f1; color:#58947e; font-size:11px; font-weight:650; }
+  .guide-step-title { color:#49636d; font-size:13px; font-weight:600; margin-bottom:4px; }
+  .guide-step p { color:#91a0a6; font-size:11px; }
+  .guide-step .btn { margin-top:8px; }
+  .step-progress { height:4px; background:#e5eee9; overflow:hidden; border-radius:3px; margin-top:17px; }
+  .step-progress > * { height:100%; background:#61a58d; }
+  .report-chart { padding:20px; }
+  .bar-chart { display:flex; align-items:flex-end; justify-content:space-around; gap:18px; min-height:200px; padding:20px 20px 28px; border-bottom:1px solid var(--line); }
+  .chart-bar { position:relative; flex:1; max-width:55px; min-width:15px; background:#7db4a2; border-radius:5px 5px 0 0; min-height:3px; }
+  .chart-bar:nth-child(even) { background:#acd0c1; }
+  .chart-label { font-size:10px; color:#8f9fa6; text-align:center; position:absolute; top:calc(100% + 8px); left:50%; transform:translateX(-50%); white-space:nowrap; }
+  .chart-bar .chart-value { position:absolute; bottom:calc(100% + 5px); left:50%; transform:translateX(-50%); font-size:10px; color:#6d8f85; }
+  .modal { border:1px solid #e6ece9; box-shadow:0 22px 90px #1c343a30; border-radius:16px; width:600px; max-width:calc(100vw - 32px); max-height:88vh; padding:0; color:var(--ink); background:#fff; }
+  .modal::backdrop { background:#1b303d55; }
+  .modal-head { padding:22px 25px 18px; display:flex; align-items:center; justify-content:space-between; gap:20px; border-bottom:1px solid var(--line); }
+  .modal-head h2 { font-size:17px; font-weight:600; }
+  .modal-body { padding:23px 25px; overflow-y:auto; max-height:calc(88vh - 155px); }
+  .modal-footer { padding:16px 25px; background:#fafcfb; border-top:1px solid var(--line); display:flex; justify-content:flex-end; gap:9px; }
+  .modal-body > .form-grid + .helper { margin-top:15px; }
+  .toast { position:fixed; bottom:25px; left:calc(50% + 116px); transform:translate(-50%,12px); z-index:100; max-width:calc(100vw - 32px); background:#23483e; box-shadow:0 6px 24px #21473b25; color:#f0f9f5; padding:13px 22px; border:1px solid #426b5e; border-radius:10px; font-size:12px; opacity:0; pointer-events:none; transition:opacity .2s,transform .2s; }
+  .toast.show { opacity:1; transform:translate(-50%,0); }
+  .login-screen { display:grid; min-height:100vh; place-items:center; padding:30px; background:#f1f5f3; background-image:radial-gradient(at 5% 5%,#e3eee8 0,transparent 40%),radial-gradient(at 95% 90%,#e7edf3 0,transparent 40%); }
+  .login-card { display:grid; grid-template-columns:.9fr 1.1fr; width:960px; max-width:100%; min-height:580px; border-radius:20px; overflow:hidden; background:#fff; border:1px solid #e3ebe6; box-shadow:0 15px 70px #2245360c; }
+  .login-visual { position:relative; background:#155d51; color:#fff; padding:40px; overflow:hidden; display:flex; flex-direction:column; justify-content:space-between; }
+  .login-visual::after { content:""; position:absolute; width:330px; height:330px; border:1px solid #ffffff10; border-radius:50%; right:-125px; bottom:90px; box-shadow:0 0 0 60px #ffffff04,0 0 0 120px #ffffff03; }
+  .login-visual .brand { margin:0; color:#fff; }
+  .login-visual .brand-mark { background:#ffffff20; box-shadow:none; }
+  .login-visual h1 { font-size:31px; line-height:1.45; font-weight:500; letter-spacing:-.5px; margin-bottom:14px; position:relative; z-index:1; }
+  .login-visual p { font-size:12px; color:#b9d1c9; position:relative; z-index:1; }
+  .login-form { padding:40px; display:flex; flex-direction:column; justify-content:center; }
+  .login-form h2 { font-size:24px; font-weight:600; letter-spacing:-.4px; margin-bottom:8px; }
+  .login-form .field { margin-top:18px; }
+  .login-form > .btn { margin-top:24px; }
+  .role-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; margin-top:18px; }
+  .role-card { text-align:left; padding:12px; border-radius:8px; border:1px solid var(--line); color:#84949b; font-size:11px; }
+  .role-card:hover,.role-card.active { border-color:#b5d4c6; background:#f3f9f6; color:#4d8971; }
+  .role-card strong { display:block; color:inherit; font-size:12px; margin-bottom:4px; }
+}
+
+@layer responsive {
+  @media (min-width:1600px) { .dashboard-grid { grid-template-columns:minmax(0,1fr) 320px; } .data-table { font-size:12px; } .data-table td { padding-top:18px; padding-bottom:18px; } .page-content { padding:37px 42px; } }
+  @media (max-width:1200px) { .sidebar { width:208px; flex-basis:208px; } .workspace { width:calc(100% - 208px); margin-left:208px; } .topbar { padding:0 25px; } .page-content { padding:27px 25px; } .dashboard-grid { grid-template-columns:minmax(0,1fr) 260px; gap:16px; } .stat-grid { gap:12px; } .stat-card { padding:17px 15px; } .stat-value { font-size:29px; } .heading-actions { gap:6px; } .page-title { font-size:26px; } .toast { left:calc(50% + 104px); } .data-table th,.data-table td { padding-left:12px; padding-right:12px; } }
+  @media (max-width:1050px) { .dashboard-grid { grid-template-columns:minmax(0,1fr); } .dashboard-grid > :last-child { display:grid; grid-template-columns:1fr 1fr; gap:18px; align-items:start; } .dashboard-grid > :last-child > .panel + .panel { margin-top:0; } .task-board { gap:12px; } .task-column { padding:12px; } .task-card { padding:13px; } .topbar-actions { gap:10px; } .role-select { max-width:175px; } .stat-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } .stat-card { padding:19px; } }
+  @media (max-width:800px) { .sidebar { width:220px; transform:translateX(-100%); transition:transform .2s; box-shadow:15px 0 40px #24383f14; } body.nav-open .sidebar { transform:translateX(0); } .workspace { margin:0; width:100%; } .topbar { height:65px; padding:0 20px; } .menu-toggle { display:inline-grid; } .breadcrumb { flex:1; gap:9px; } .breadcrumb > span:first-of-type { display:none; } .topbar-actions { gap:8px; } .topbar-actions .avatar { display:none; } .role-select { max-width:180px; padding-right:18px; } .page-content { padding:25px 20px; } .page-heading { gap:15px; } .heading-actions { padding-top:8px; } .page-title { font-size:25px; } .toast { left:50%; } .task-board { grid-template-columns:1fr; } .task-column { min-height:auto; } .task-column > h3 { margin-bottom:12px; } .task-card { margin-bottom:10px; } .detail-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } .login-card { grid-template-columns:1fr; max-width:500px; } .login-visual { min-height:190px; padding:28px; } .login-visual h1 { font-size:22px; margin-top:24px; } .login-visual > small { display:none; } .login-form { padding:28px; } }
+  @media (max-width:550px) { body { font-size:12px; } .topbar { gap:7px; padding:0 13px; } .topbar-actions { gap:2px; } .breadcrumb { font-size:10px; } .role-select { width:132px; max-width:132px; font-size:10px; padding-left:6px; padding-right:13px; } .icon-button { width:30px; height:32px; } .page-content { padding:22px 15px 30px; } .page-heading { flex-direction:column; gap:10px; margin-bottom:20px; } .page-title { font-size:25px; } .page-subtitle { font-size:11px; } .heading-actions { padding-top:0; flex-wrap:wrap; } .stat-grid { gap:10px; margin-bottom:18px; } .stat-card { padding:15px 13px; } .stat-top { margin-bottom:7px; } .stat-label { font-size:10px; } .stat-icon { width:28px; height:28px; } .stat-icon svg { width:14px; height:14px; } .stat-value { font-size:27px; } .stat-foot { font-size:9px; gap:3px; line-height:1.6; } .dashboard-grid { gap:17px; } .dashboard-grid > :last-child { display:block; } .dashboard-grid > :last-child > .panel + .panel { margin-top:18px; } .panel-head { padding:17px 17px 13px; gap:9px; } .panel-title { font-size:13px; } .panel-body { padding:0 17px 18px; } .toolbar { padding:0 17px 14px; gap:7px; } .search-input { width:100%; } .toolbar .search-input { flex:1; min-width:140px; } .panel-head .btn { font-size:10px; padding:6px 8px; } .segmented { gap:0; } .segment { padding:4px 7px; font-size:9px; } .data-table th:first-child,.data-table td:first-child { padding-left:17px; } .data-table th:last-child,.data-table td:last-child { padding-right:17px; } .data-table td { padding-top:14px; padding-bottom:14px; } .resource-summary { padding:0 17px 17px; gap:8px; } .resource-mini { padding:10px; } .resource-mini strong { font-size:17px; } .resource-mini .muted { font-size:9px; } .resource-grid { padding:0 17px 17px; } .resource-legend { padding:12px 17px; gap:10px; } .presentation-banner { align-items:flex-start; flex-direction:column; gap:10px; padding:12px 14px; font-size:10px; } .presentation-banner .btn { min-height:28px; font-size:10px; padding:5px 9px; } .form-grid { grid-template-columns:1fr; gap:14px; } .detail-grid { grid-template-columns:repeat(2,minmax(0,1fr)); gap:9px; } .info-item { padding:12px; font-size:11px; } .modal { border-radius:13px; max-height:90vh; max-width:calc(100vw - 22px); } .modal-head { padding:17px 19px; } .modal-head h2 { font-size:16px; } .modal-body { padding:19px; max-height:calc(90vh - 140px); } .modal-footer { padding:13px 19px; } .airport-code { font-size:25px; } .flight-hero { padding:17px; } .tabs,.subtabs { gap:19px; margin-bottom:18px; } .tab,.subtabs > button { font-size:11px; padding:10px 1px; } .toast { bottom:16px; width:max-content; padding:12px 18px; font-size:11px; } .login-screen { padding:16px; } .login-card { border-radius:15px; } .login-visual { min-height:175px; padding:23px; } .login-visual p { font-size:11px; } .login-visual h1 { font-size:21px; margin-top:20px; } .login-form { padding:25px 23px; } .login-form h2 { font-size:21px; } .role-grid { gap:8px; } .role-card { padding:10px; font-size:10px; } .role-card strong { font-size:11px; } }
+  @media (prefers-reduced-motion:reduce) { *,*::before,*::after { transition:none !important; animation:none !important; scroll-behavior:auto !important; } }
+  @media print { @page { size:A4 landscape; margin:12mm; } body { background:#fff; color:#172b36; font-size:10pt; } .sidebar,.topbar,.heading-actions,.toolbar,.presentation-banner,.btn,.icon-button,.toast,.menu-toggle,.modal,.tabs,.subtabs { display:none !important; } .workspace { width:100%; margin:0; } .page-content { padding:0; max-width:none; } .page-heading { margin-bottom:18px; } .page-title { font-size:23pt; } .page-subtitle { font-size:9pt; } .panel,.stat-card { box-shadow:none; break-inside:avoid; border-color:#dce2e4; } .stat-grid { grid-template-columns:repeat(4,1fr); gap:10px; margin:18px 0; } .stat-card { padding:14px; } .stat-value { font-size:23pt; } .dashboard-grid { display:block; } .dashboard-grid > :last-child { display:block; } .table-wrap { overflow:visible; } .data-table { font-size:8pt; white-space:normal; } .data-table td,.data-table th { padding:9px; } .data-table thead { display:table-header-group; } .data-table tr { break-inside:avoid; } .badge,.chart-bar,.progress-fill,.booking { print-color-adjust:exact; -webkit-print-color-adjust:exact; } .panel { margin-bottom:15px; } .bar-chart { min-height:150px; } }
+}
+
+/* Styles shared by the final interactive modules. */
+@layer components {
+  .sr-only { position:absolute!important; width:1px!important; height:1px!important; padding:0!important; margin:-1px!important; overflow:hidden!important; clip:rect(0,0,0,0)!important; white-space:nowrap!important; border:0!important; }
+  body { font-size:14px; }
+  .data-table { font-size:12px; }
+  .data-table th { font-size:10px; }
+  .nav-item { font-size:12px; }
+  .route + span { display:block; margin-top:2px; }
+  .airport-selector { display:flex; align-items:center; gap:9px; padding:13px 8px 15px; border-top:1px solid #edf1ef; border-bottom:1px solid #edf1ef; margin:0 3px 8px; }
+  .airport-selector strong { display:block; font-size:10px; font-weight:600; color:#617780; }
+  .airport-selector .small { display:block; font-size:8px; margin-top:2px; }
+  .airport-selector .demo-badge { margin-left:auto; font-size:7px; padding:2px 4px; letter-spacing:.3px; }
+  .airport-monogram { font-size:10px; font-weight:700; width:29px; height:29px; background:#f3f6f5; border:1px solid #e8eeeb; border-radius:6px; color:#78918c; display:grid; place-items:center; flex:0 0 auto; }
+  .demo-note { font-size:9px; color:#8ca09b; padding:0 5px 13px; border-bottom:1px solid #eef2f0; margin-bottom:8px; }
+  .demo-note strong { font-weight:500; }
+  .demo-note p { margin:4px 0 0 9px; font-size:9px; }
+  .sidebar-bottom .nav-item { font-size:10px; gap:9px; padding:8px 5px; min-height:33px; }
+  .sidebar-bottom .nav-item svg { width:14px; height:14px; }
+  .date-label { display:inline-flex; align-items:center; gap:6px; color:#8c9aa1; font-size:11px; margin-right:5px; white-space:nowrap; }
+  .date-label svg { width:13px; height:13px; }
+  .page-footer { display:flex; align-items:center; justify-content:space-between; gap:15px; color:#acb5ba; font-size:9px; padding-top:28px; }
+  .page-footer span:last-child { text-align:right; }
+  .search-wrap { display:flex; align-items:center; position:relative; margin-left:auto; min-width:150px; }
+  .search-wrap svg { position:absolute; left:10px; width:13px; height:13px; color:#a1adb3; pointer-events:none; }
+  .search-wrap .search-input { padding-left:31px; min-width:240px; }
+  .date-filter { font-size:11px; padding:7px 9px; min-height:34px; }
+  .panel > .toolbar:first-child { padding-top:20px; }
+  .panel-bottom { padding:12px 22px; border-top:1px solid #eef1f2; font-size:10px; }
+  .text-button { display:inline-flex; align-items:center; gap:5px; padding:5px 0; color:#5c927f; font-size:10px; font-weight:500; }
+  .text-button:hover { color:#24654e; }
+  .text-button svg { width:12px; height:12px; }
+  .notification-button i { width:5px; height:5px; background:#daa460; border-radius:50%; position:absolute; top:6px; right:8px; border:1.5px solid #fff; box-sizing:content-box; }
+  .banner-detail { color:#88a393; margin-left:13px; font-size:10px; }
+  .presentation-banner > span > svg { width:13px; height:13px; margin-right:8px; }
+  .presentation-banner .text-button { padding:0; color:#598875; flex-shrink:0; }
+  .dot-separator { color:#a5b1b1; margin:0 3px; }
+  .readiness-grid { padding:0 21px 20px; display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:11px; }
+  .readiness-card { min-width:0; border:1px solid #e9eeeb; border-radius:8px; padding:11px 12px; text-align:left; background:#fdfefe; }
+  .readiness-card:hover { border-color:#b6d3c6; background:#f8fcfa; }
+  .readiness-card > .list-row { font-size:10px; gap:7px; padding:0 0 12px; border:0; }
+  .readiness-card > .list-row:first-child strong { color:#547169; font-size:11px; font-weight:600; }
+  .readiness-card > .list-row:first-child .small { font-size:8px; }
+  .readiness-card > .list-row:last-child { padding:9px 0 0; font-size:8px; color:#94a59e; }
+  .readiness-card > .list-row:last-child .muted { font-size:9px; }
+  .readiness-card .progress { height:4px; }
+  .row-actions { display:flex; align-items:center; flex-wrap:wrap; gap:5px; }
+  .row-actions .btn { padding:5px 8px; font-size:10px; min-height:27px; }
+  .danger-text { color:#bc8075; }
+  .danger-text:hover { color:#b45e4e; background:#fff4f0; }
+  .count-pill { display:inline-flex; align-items:center; justify-content:center; min-width:23px; border-radius:5px; padding:2px 6px; background:#edf2f0; color:#82988e; font-size:10px; }
+  .panel-head > div > p { color:#94a1a7; font-size:10px; margin-top:4px; }
+  .panel-head > div > h2 { font-size:14px; color:#38515c; font-weight:600; }
+  .stat-grid:has(> :nth-child(3):last-child) { grid-template-columns:repeat(3,minmax(0,1fr)); }
+  .stat-card > span.muted { display:block; color:#8b9ba2; font-size:11px; margin-bottom:8px; }
+  .stat-card > strong { display:block; color:#36535a; font-size:30px; font-weight:600; line-height:1.4; letter-spacing:-.7px; }
+  .stat-card > small { display:block; font-size:10px; color:#9ca9ae; margin-top:8px; }
+  .stat-card > strong > small, .stat-value > small { font-size:16px; color:#a1b0b3; font-weight:400; letter-spacing:-.3px; }
+  .flight-cell .small, .data-table td > .small, .activity-item > div > .small { display:block; }
+  .status-dot { width:4px; height:4px; border-radius:50%; background:currentColor; opacity:.65; }
+  .inline-field { flex-direction:row; align-items:center; gap:8px; margin-left:auto; }
+  .inline-field input { padding:7px 9px; min-height:33px; font-size:11px; width:138px; }
+  .resource-row { min-height:64px; }
+  .resource-track { min-height:48px; }
+  .resource-ticks.resource-row { display:grid; min-width:0; padding:0; min-height:37px; }
+  .resource-ticks .resource-track { min-height:34px; background:none; }
+  .resource-ticks .resource-track > span { position:absolute; top:6px; transform:translateX(-50%); font-size:9px; color:#a3aeb3; }
+  .resource-ticks .resource-track > span:first-child { transform:none; }
+  .resource-ticks .resource-track > span:last-child { transform:translateX(-100%); }
+  .resource-track .booking { top:5px; height:39px; flex-direction:column; align-items:flex-start; justify-content:center; gap:1px; padding:4px 7px; border-right:1px solid #ffffff60; font-size:8px; text-align:left; }
+  .resource-track .booking strong { font-size:9px; font-weight:650; }
+  .resource-track .booking span { font-size:7px; opacity:.82; }
+  .resource-track .booking:hover { filter:brightness(.97); outline:1px solid #71a69477; }
+  .maintenance-block { position:absolute; inset:6px 0; border-radius:4px; background:repeating-linear-gradient(-45deg,#f1f3f3 0px,#f1f3f3 5px,#f6f7f7 5px,#f6f7f7 10px); border:1px solid #e6ebeb; display:grid; place-items:center; color:#a0aaad; font-size:8px; letter-spacing:1.5px; }
+  .legend-dot.gray { background:#dce4e0; }
+  .task-column > .section-heading h2 { font-size:12px; color:#70868c; font-weight:600; }
+  .task-column > .section-heading { margin:0 0 15px; }
+  .task-card-top { display:flex; align-items:center; justify-content:space-between; gap:9px; }
+  .task-card-top > strong { color:#70958a; font-size:11px; }
+  .task-card .row-actions { margin-top:15px; }
+  .task-card .row-actions .btn { margin-top:0; }
+  .task-card > .helper { margin-top:10px; line-height:1.8; font-size:10px; }
+  .task-meta { justify-content:space-between; gap:8px; }
+  .task-meta strong { font-weight:500; color:#6b838b; font-size:10px; text-align:right; }
+  .toolbar .subtabs { margin:0; gap:14px; border:0; }
+  .toolbar .subtabs > button { margin:0; padding:6px 3px; border:0; border-radius:0; background:transparent; font-size:11px; }
+  .toolbar .subtabs > button.active { border-bottom:2px solid var(--teal); }
+  .report-toolbar { margin-bottom:22px; }
+  .report-toolbar .toolbar { justify-content:space-between; padding-top:17px; padding-bottom:17px; }
+  .date-range { display:flex; align-items:center; gap:13px; }
+  .date-range .field { flex-direction:row; align-items:center; gap:8px; color:#87989f; font-size:10px; }
+  .date-range input { min-height:34px; padding:6px 8px; width:140px; font-size:11px; }
+  .report-grid { display:grid; grid-template-columns:minmax(0,1.5fr) minmax(0,1fr); gap:22px; margin-bottom:22px; }
+  .report-grid > .panel { margin:0; min-width:0; }
+  .bar-chart:has(> .bar-column) { min-height:235px; padding:18px 20px 16px; border:0; gap:15px; }
+  .bar-column { display:flex; flex-direction:column; align-items:center; justify-content:flex-end; align-self:stretch; flex:1; max-width:48px; gap:7px; }
+  .bar-column .bar { width:100%; max-width:35px; background:#84b6a3; border-radius:4px 4px 1px 1px; }
+  .bar-column:nth-child(even) .bar { background:#c1d9cd; }
+  .bar-column .bar-count { color:#71968a; font-size:10px; }
+  .bar-column small { color:#9ba9ae; font-size:9px; }
+  .report-grid .resource-summary { display:block; padding:0 22px 20px; }
+  .resource-summary-row { padding:12px 0; color:#92a0a6; font-size:11px; }
+  .resource-summary-row > strong { float:right; color:#758f85; font-size:11px; font-weight:500; }
+  .resource-summary-row .progress { margin-top:9px; }
+  .resource-summary-row .progress > span { display:block; height:100%; background:#8db9a7; border-radius:5px; }
+  .resource-summary-row:nth-child(2) .progress > span { background:#b5cbbf; }
+  .resource-summary-row:nth-child(3) .progress > span { background:#acc0d2; }
+  .bag-tag { border:1px dashed #cadad1; border-radius:8px; padding:24px; text-align:center; max-width:340px; margin:auto; color:#5d7e70; background:#fcfefb; }
+  .bag-tag > div.muted { font-size:8px; letter-spacing:1.1px; margin-bottom:13px; }
+  .bag-tag h2 { font-size:25px; margin:7px 0 12px; color:#35594b; }
+  .bag-tag > strong { display:block; font-size:12px; font-weight:500; }
+  .bag-tag > strong.mono { font-size:16px; font-weight:600; }
+  .bag-tag p { margin:8px 0; }
+  .bag-tag small { color:#a0afa6; font-size:9px; }
+  .tag-barcode { font-family:Consolas,monospace; color:#425d4d; font-size:31px; letter-spacing:-1px; white-space:nowrap; overflow:hidden; margin:13px 0 5px; line-height:1.6; }
+  .audit-detail { display:block; white-space:normal; max-width:440px; min-width:180px; color:#91a0a6; font-size:10px; line-height:1.7; overflow-wrap:anywhere; }
+  .login-screen { display:grid; grid-template-columns:1fr 1fr; padding:0; background:#fff; }
+  .login-screen > .login-visual { min-height:100vh; border-radius:0; padding:60px clamp(35px,5.5vw,100px); background:linear-gradient(145deg,#135b4f,#1e7161); }
+  .login-screen > .login-visual .eyebrow { color:#87bbaa; font-size:9px; margin-bottom:18px; }
+  .login-screen > .login-visual h1 { font-size:43px; line-height:1.28; font-weight:450; letter-spacing:-1.2px; margin-bottom:24px; }
+  .login-screen > .login-visual p { font-size:13px; line-height:1.9; }
+  .login-screen > .login-visual > .small { color:#8eb9a9; font-size:9px; letter-spacing:1.5px; }
+  .login-screen > .login-card { display:flex; flex-direction:column; justify-content:center; width:auto; max-width:none; min-height:100vh; border-radius:0; border:0; box-shadow:none; padding:60px clamp(30px,7vw,135px); }
+  .login-screen > .login-card h1 { font-size:30px; font-weight:600; margin:4px 0 10px; letter-spacing:-.6px; }
+  .login-screen > .login-card > .muted { font-size:12px; }
+  .login-screen > .login-card > .field { margin:28px 0 20px; }
+  .login-screen > .login-card > .btn { min-height:43px; font-size:12px; }
+  .login-screen > .login-card > .helper { font-size:10px; margin:15px 0 25px; line-height:1.8; }
+  .login-screen > .login-card > .warning-box { font-size:10px; color:#9da991; background:#fafbf6; border-color:#e9efdf; line-height:1.8; }
+}
+
+@layer responsive {
+  @media (max-width:1200px) { .search-wrap .search-input { min-width:200px; } .readiness-grid { gap:8px; } .readiness-card { padding:10px; } .readiness-card > .list-row { flex-wrap:wrap; gap:4px; } .readiness-card > .list-row:last-child { font-size:8px; } }
+  @media (max-width:1050px) { .report-grid { gap:16px; } .report-toolbar .toolbar { gap:15px; } .readiness-card > .list-row { flex-wrap:nowrap; } .login-screen > .login-visual h1 { font-size:36px; } }
+  @media (max-width:800px) { .top-demo { display:none; } .page-footer { font-size:8px; } .report-grid { grid-template-columns:1fr; gap:18px; } .date-range { gap:10px; } .date-range .field { flex-direction:column; align-items:flex-start; gap:5px; } .login-screen { grid-template-columns:1fr; } .login-screen > .login-visual { min-height:285px; padding:32px; gap:35px; } .login-screen > .login-visual h1 { font-size:29px; margin-bottom:14px; } .login-screen > .login-visual .brand { margin:0; } .login-screen > .login-visual .eyebrow { margin-bottom:10px; } .login-screen > .login-visual > .small { display:none; } .login-screen > .login-card { min-height:0; padding:35px max(25px,calc((100vw - 430px)/2)); } .login-screen > .login-card h1 { font-size:26px; } }
+  @media (max-width:550px) { .stat-grid:has(> :nth-child(3):last-child) { grid-template-columns:repeat(3,minmax(0,1fr)); gap:7px; } .stat-grid:has(> :nth-child(3):last-child) .stat-card { padding:12px 10px; } .stat-grid:has(> :nth-child(3):last-child) .stat-label { font-size:8px; } .stat-grid:has(> :nth-child(3):last-child) .stat-icon { display:none; } .stat-grid:has(> :nth-child(3):last-child) .stat-card > span.muted { font-size:8px; min-height:26px; } .stat-grid:has(> :nth-child(3):last-child) .stat-foot { font-size:7px; } .stat-card > strong { font-size:26px; } .stat-card > small { font-size:8px; } .stat-card > strong > small, .stat-value > small { font-size:13px; } .banner-detail { display:block; margin:5px 0 0 26px; font-size:9px; } .presentation-banner { gap:8px; } .presentation-banner .text-button { margin-left:26px; font-size:9px; } .readiness-grid { grid-template-columns:1fr; gap:9px; padding:0 17px 17px; } .readiness-card { padding:12px; } .readiness-card > .list-row { padding-bottom:9px; } .readiness-card > .list-row:first-child .small { font-size:10px; } .readiness-card > .list-row:last-child { font-size:9px; } .search-wrap { margin-left:0; flex:1; } .search-wrap .search-input { min-width:0; width:100%; } .date-filter { font-size:10px; max-width:134px; } .panel-bottom { padding:11px 17px; font-size:9px; } .date-label { font-size:10px; } .inline-field { margin:0; gap:5px; } .resource-grid { padding-right:22px; } .resource-row { grid-template-columns:75px minmax(350px,1fr); gap:10px; } .resource-label { font-size:10px; } .resource-label .small { font-size:8px; } .resource-legend .muted { display:block; width:100%; } .resource-legend { font-size:8px; } .page-footer { flex-direction:column; align-items:flex-start; gap:3px; font-size:8px; } .page-footer span:last-child { text-align:left; } .report-toolbar .toolbar { padding:15px 17px; } .date-range { width:100%; gap:12px; } .date-range .field { flex:1; } .date-range input { width:100%; } .report-toolbar .row-actions { width:100%; } .report-toolbar .row-actions .btn { flex:1; } .bar-chart:has(> .bar-column) { gap:8px; padding:10px 17px 14px; min-height:230px; } .bar-column small { font-size:8px; } .report-grid .resource-summary { padding:0 17px 17px; } .bag-tag { padding:20px 15px; } .tag-barcode { font-size:27px; } .login-screen > .login-visual { padding:25px; min-height:265px; } .login-screen > .login-card { padding:30px 25px; } }
+  @media print { .page-footer { color:#87968d; font-size:7pt; } .report-toolbar { display:none; } .report-grid { grid-template-columns:1.5fr 1fr; gap:15px; } .bar-chart:has(> .bar-column) { min-height:200px; } .row-actions, .date-label { display:none; } .report-grid .resource-summary { display:block; } .resource-summary-row .progress > span { print-color-adjust:exact; -webkit-print-color-adjust:exact; } .stat-card > strong { font-size:23pt; } .stat-card > span.muted { font-size:8pt; } .stat-card > small { font-size:7pt; } }
+}
+
+/* Persistent presentation preferences, available on login and all modules. */
+.preferences-bar{position:fixed;bottom:12px;right:16px;z-index:900;display:flex;gap:12px;background:var(--surface);color:var(--ink);border:1px solid var(--line);box-shadow:0 3px 18px #0002;border-radius:12px;padding:8px 12px;font-size:11px}
+.preferences-bar label{display:flex;align-items:center;gap:6px}.preferences-bar select{padding:5px 7px;font-size:12px}.page-footer{padding-bottom:76px!important}
+html[data-theme="dark"]{color-scheme:dark;--canvas:#101b24;--surface:#182832;--ink:#e5eef1;--muted:#a0b4bf;--line:#30434e;--teal:#64d6c0;--teal-dark:#9be8d8;--teal-soft:#203f3c;--amber:#f1c777;--red:#ffabab}
+html[data-theme="dark"] :is(.sidebar,.topbar,.modal,.card,.panel,input,select,textarea,.preferences-bar){background:var(--surface);color:var(--ink);border-color:var(--line)}
+html[data-theme="dark"] :is(th,td,.stat-card,.metric-card,.flight-hero,.airport-selector,.demo-note,.login-card,.login-panel){background:var(--surface);color:var(--ink);border-color:var(--line)}
+html[data-theme="dark"] :is(.notice,.alert,.notification-card,.demo-banner,.resource-card){background:#20353e;color:var(--ink);border-color:var(--line)}
+html[data-theme="dark"] .btn-primary{background:#087f75;color:white}html[data-theme="dark"] .badge{color:#152c30}
+@media(max-width:600px){.preferences-bar{bottom:7px;right:8px;gap:8px;padding:6px 8px}.preferences-bar label>span{display:none}}
+@media print{.preferences-bar{display:none}}
+</style>
+</head>
+<body>
+  <div id="app"></div>
+  <dialog id="modal" class="modal" aria-labelledby="modal-title"></dialog>
+  <div id="toast" role="status" aria-live="polite"></div>
+  <script>/* Fictional scenario. No operational or personal records are used. */
+window.makeAirportDemo = function () {
+  const date = '2026-11-03';
+  const flights = [
+    {id:'F01',number:'TG405',airline:'Thai Airways',code:'TG',from:'BKK',to:'SIN',city:'Singapore',type:'Departure',scheduled:'10:50',estimated:'10:50',actual:'',status:'Boarding',aircraft:'A350',delayReason:''},
+    {id:'F02',number:'FD302',airline:'AirAsia',code:'FD',from:'BKK',to:'HKT',city:'Phuket',type:'Departure',scheduled:'11:10',estimated:'11:10',actual:'',status:'Scheduled',aircraft:'A320',delayReason:''},
+    {id:'F03',number:'TG612',airline:'Thai Airways',code:'TG',from:'BKK',to:'KIX',city:'Osaka',type:'Departure',scheduled:'11:20',estimated:'11:50',actual:'',status:'Delayed',aircraft:'B777',delayReason:'Late arrival of aircraft'},
+    {id:'F04',number:'PG271',airline:'Bangkok Airways',code:'PG',from:'BKK',to:'USM',city:'Koh Samui',type:'Departure',scheduled:'11:40',estimated:'11:40',actual:'',status:'Scheduled',aircraft:'A320',delayReason:''},
+    {id:'F05',number:'TG103',airline:'Thai Airways',code:'TG',from:'CNX',to:'BKK',city:'Chiang Mai',type:'Arrival',scheduled:'09:45',estimated:'09:45',actual:'09:43',status:'Arrived',aircraft:'A320',delayReason:''},
+    {id:'F06',number:'SQ706',airline:'Singapore Airlines',code:'SQ',from:'SIN',to:'BKK',city:'Singapore',type:'Arrival',scheduled:'10:15',estimated:'10:15',actual:'10:28',status:'Arrived',aircraft:'A350',delayReason:'Air traffic restriction'},
+    {id:'F07',number:'VN601',airline:'Vietnam Airlines',code:'VN',from:'SGN',to:'BKK',city:'Ho Chi Minh City',type:'Arrival',scheduled:'12:00',estimated:'12:00',actual:'',status:'Scheduled',aircraft:'A320',delayReason:''},
+    {id:'F08',number:'SL510',airline:'Thai Lion Air',code:'SL',from:'BKK',to:'CEI',city:'Chiang Rai',type:'Departure',scheduled:'12:20',estimated:'12:20',actual:'',status:'Cancelled',aircraft:'B737',delayReason:'Operational cancellation'}
+  ].map(f=>({...f,date,events:[{time:'08:00',title:'สร้างตารางเที่ยวบิน',detail:f.number+' · '+f.from+' → '+f.to},{time:'09:30',title:f.status==='Delayed'?'ปรับเวลาคาดการณ์':'อัปเดตสถานะเที่ยวบิน',detail:f.status==='Delayed'?'11:20 → 11:50 · '+f.delayReason:f.status}]}));
+  return {
+    version:1,flights,
+    allocations:[
+      {id:'A01',flightId:'F01',kind:'Gate',resource:'A04',date,start:'10:00',end:'11:10'},
+      {id:'A02',flightId:'F02',kind:'Gate',resource:'A06',date,start:'10:30',end:'11:30'},
+      {id:'A03',flightId:'F04',kind:'Gate',resource:'B02',date,start:'11:00',end:'12:00'},
+      {id:'A04',flightId:'F01',kind:'Stand',resource:'S01',date,start:'09:40',end:'11:10'},
+      {id:'A05',flightId:'F06',kind:'Stand',resource:'S02',date,start:'10:20',end:'11:30'},
+      {id:'A06',flightId:'F05',kind:'Carousel',resource:'C01',date,start:'09:50',end:'10:30'},
+      {id:'A07',flightId:'F06',kind:'Carousel',resource:'C02',date,start:'10:30',end:'11:10'}
+    ],
+    passengers:[
+      {id:'P01',name:'Narin Demo',passport:'DEMO001',flightId:'F01',seat:'12A',status:'Checked-in'},
+      {id:'P02',name:'Ploy Demo',passport:'DEMO002',flightId:'F01',seat:'12B',status:'Booked'},
+      {id:'P03',name:'Alex Demo',passport:'DEMO003',flightId:'F03',seat:'21C',status:'Checked-in'},
+      {id:'P04',name:'Mali Demo',passport:'DEMO004',flightId:'F02',seat:'08F',status:'Checked-in'},
+      {id:'P05',name:'Daniel Demo',passport:'DEMO005',flightId:'F06',seat:'14A',status:'Boarded'}
+    ],
+    bags:[
+      {id:'BG000101',passengerId:'P01',flightId:'F01',weight:18,type:'Checked baggage',status:'Screening',history:[{status:'Check-in',time:date+' 09:15'},{status:'Screening',time:date+' 09:35'}]},
+      {id:'BG000102',passengerId:'P04',flightId:'F02',weight:15,type:'Checked baggage',status:'Check-in',history:[{status:'Check-in',time:date+' 09:40'}]},
+      {id:'BG000103',passengerId:'P05',flightId:'F06',weight:20,type:'Checked baggage',status:'Delivered',history:[{status:'Check-in',time:date+' 07:00'},{status:'Screening',time:date+' 07:15'},{status:'Loaded',time:date+' 07:45'},{status:'Delivered',time:date+' 10:35'}]}
+    ],
+    staff:[
+      {id:'S01',name:'Kittipong Demo',position:'Ramp team',skills:['Baggage loading','Pushback'],status:'Available'},
+      {id:'S02',name:'Arisa Demo',position:'Cabin team',skills:['Cleaning'],status:'On duty'},
+      {id:'S03',name:'Somchai Demo',position:'Fuel team',skills:['Refueling'],status:'Available'},
+      {id:'S04',name:'Thanawat Demo',position:'Ramp team',skills:['Baggage loading','Pushback'],status:'On duty'},
+      {id:'S05',name:'Nicha Demo',position:'Cabin team',skills:['Cleaning'],status:'Off duty'}
+    ],
+    equipment:[
+      {id:'E01',name:'Belt loader 01',type:'Belt loader',status:'Available'},
+      {id:'E02',name:'Fuel truck 01',type:'Fuel truck',status:'Available'},
+      {id:'E03',name:'Pushback tug 01',type:'Pushback tug',status:'In use'},
+      {id:'E04',name:'Cabin service cart',type:'Service cart',status:'In use'},
+      {id:'E05',name:'Belt loader 02',type:'Belt loader',status:'Maintenance'}
+    ],
+    tasks:[
+      {id:'T01',flightId:'F01',type:'Baggage loading',date,start:'10:10',end:'10:40',status:'Pending',staffId:'',equipmentId:'',actualStart:'',actualEnd:'',note:''},
+      {id:'T02',flightId:'F02',type:'Cleaning',date,start:'10:20',end:'10:50',status:'In progress',staffId:'S02',equipmentId:'E04',actualStart:date+' 10:20',actualEnd:'',note:''},
+      {id:'T03',flightId:'F03',type:'Refueling',date,start:'11:00',end:'11:25',status:'Pending',staffId:'',equipmentId:'',actualStart:'',actualEnd:'',note:''},
+      {id:'T04',flightId:'F01',type:'Pushback',date,start:'10:45',end:'11:00',status:'Pending',staffId:'S04',equipmentId:'E03',actualStart:'',actualEnd:'',note:''},
+      {id:'T05',flightId:'F05',type:'Cleaning',date,start:'09:50',end:'10:10',status:'Completed',staffId:'S02',equipmentId:'E04',actualStart:date+' 09:50',actualEnd:date+' 10:08',note:'ตรวจความเรียบร้อยแล้ว'}
+    ],
+    users:[
+      {id:'U01',name:'Operations Demo',username:'ops.demo',role:'operations',status:'Active'},
+      {id:'U02',name:'Gate Demo',username:'gate.demo',role:'gate',status:'Active'},
+      {id:'U03',name:'Ramp Demo',username:'ramp.demo',role:'ramp',status:'Active'},
+      {id:'U04',name:'Baggage Demo',username:'baggage.demo',role:'baggage',status:'Active'},
+      {id:'U05',name:'Passenger Demo',username:'passenger.demo',role:'passenger',status:'Active'},
+      {id:'U06',name:'Supervisor Demo',username:'supervisor.demo',role:'supervisor',status:'Active'},
+      {id:'U07',name:'Kittipong Demo',username:'ground.demo',role:'ground',status:'Active',staffId:'S01'},
+      {id:'U08',name:'Administrator Demo',username:'admin.demo',role:'admin',status:'Active'}
+    ],
+    notices:[
+      {id:'N01',title:'TG612 ล่าช้า 30 นาที',text:'ปรับเวลาคาดการณ์จาก 11:20 เป็น 11:50 เนื่องจากอากาศยานขาเข้าล่าช้า',type:'warning',flightId:'F03',read:false,time:'09:30'},
+      {id:'N02',title:'TG405 รอจัดทีมโหลดสัมภาระ',text:'งาน Baggage loading 10:10–10:40 ยังไม่มีผู้รับผิดชอบ',type:'danger',flightId:'F01',read:false,time:'10:00'},
+      {id:'N03',title:'SQ706 ลงจอดแล้ว',text:'เที่ยวบินจาก Singapore ลงจอดเวลา 10:28 · สายพาน C02',type:'info',flightId:'F06',read:false,time:'10:28'}
+    ],
+    audit:[
+      {id:'L01',time:date+' 09:30:00',actor:'Operations Demo',role:'operations',action:'อัปเดตเที่ยวบิน',entity:'TG612',details:'estimated: 11:20 → 11:50; status: Scheduled → Delayed; reason: Late arrival of aircraft'},
+      {id:'L02',time:date+' 09:35:00',actor:'Baggage Demo',role:'baggage',action:'อัปเดตสัมภาระ',entity:'BG000101',details:'status: Check-in → Screening'},
+      {id:'L03',time:date+' 10:20:00',actor:'Arisa Demo',role:'ground',action:'เริ่มงานภาคพื้น',entity:'T02',details:'status: Pending → In progress; actualStart: 10:20'}
+    ]
+  };
+};
+</script><script>/* AEROPS presentation prototype — all state is local to this browser. */
+(() => {
+  'use strict';
+  const KEY='aerops-demo-v1';
+  let db;
+  try { db=JSON.parse(localStorage.getItem(KEY)); } catch (_) {}
+  if (!db || db.version!==1 || !Array.isArray(db.flights)) db=makeAirportDemo();
+  const roles={presenter:'โหมดนำเสนอ · ทุกบทบาท',operations:'Operations Officer',gate:'Gate Agent',ramp:'Ramp Agent',baggage:'Baggage Staff',passenger:'Passenger Service Agent',supervisor:'Ground Handling Supervisor',ground:'Ground Staff',admin:'Admin'};
+  const statusLabels={'Boarding':'กำลังขึ้นเครื่อง','Scheduled':'ตามกำหนด','Delayed':'ล่าช้า','Departed':'ออกเดินทางแล้ว','Arrived':'ลงจอดแล้ว','Cancelled':'ยกเลิก','Booked':'จองแล้ว','Checked-in':'เช็กอินแล้ว','Boarded':'ขึ้นเครื่องแล้ว','No-show':'ไม่มาแสดงตัว','Check-in':'รับสัมภาระ','Screening':'ตรวจสัมภาระ','Loaded':'โหลดขึ้นเครื่อง','Delivered':'ส่งมอบแล้ว','Available':'พร้อมใช้งาน','On duty':'ปฏิบัติงาน','Off duty':'นอกเวลางาน','In use':'กำลังใช้งาน','Maintenance':'ซ่อมบำรุง','Pending':'รอดำเนินการ','In progress':'กำลังดำเนินการ','Completed':'เสร็จสิ้น','Active':'เปิดใช้งาน','Inactive':'ปิดใช้งาน'};
+  const permissionRoles={flights:['operations'],resources:['gate','ramp','baggage'],passengers:['passenger'],baggage:['baggage'],personnel:['supervisor'],ground:['supervisor'],groundUpdate:['ground'],users:['admin'],audit:['admin'],reports:['operations']};
+  const nav=[['dashboard','layout','ภาพรวมปฏิบัติการ','WORKSPACE'],['flights','plane','เที่ยวบิน'],['resources','grid','ทรัพยากรสนามบิน'],['passengers','users','ผู้โดยสาร','OPERATIONS'],['baggage','bag','สัมภาระ'],['personnel','team','บุคลากรและอุปกรณ์'],['ground','check','งานบริการภาคพื้น'],['notifications','bell','การแจ้งเตือน','MONITORING'],['reports','chart','รายงาน'],['users','shield','บัญชีผู้ใช้งาน','ADMINISTRATION'],['audit','history','Audit Log']];
+  const titles={dashboard:['ภาพรวมปฏิบัติการ','ทุกเที่ยวบิน ทุกทีม ในมุมมองเดียว'],flights:['จัดการเที่ยวบิน','ตารางเที่ยวบิน สถานะ และรายละเอียดการปฏิบัติการ'],resources:['ทรัพยากรสนามบิน','จัดสรร Gate, Parking Stand และ Baggage Carousel'],passengers:['จัดการผู้โดยสาร','ข้อมูลผู้โดยสารและสถานะการเดินทาง'],baggage:['ติดตามสัมภาระ','ลงทะเบียน ออก Baggage Tag และติดตามทุกขั้นตอน'],personnel:['บุคลากรและอุปกรณ์','เตรียมทีมและอุปกรณ์ให้พร้อมสำหรับทุกเที่ยวบิน'],ground:['งานบริการภาคพื้น','มอบหมายงานและติดตามความพร้อมก่อนออกเดินทาง'],notifications:['ศูนย์การแจ้งเตือน','เหตุการณ์สำคัญที่ทีมของคุณต้องติดตาม'],reports:['รายงานการปฏิบัติการ','วิเคราะห์เที่ยวบินและการใช้ทรัพยากรจากข้อมูลสาธิต'],users:['จัดการบัญชีผู้ใช้งาน','บัญชีสาธิตและสิทธิ์ตามบทบาท'],audit:['ประวัติการใช้งาน','ตรวจสอบผู้ดำเนินการ เวลา และข้อมูลที่เปลี่ยนแปลง']};
+  const paths={plane:'M22 2 9 15m13-13-7 20-4-9-9-4 20-7Z',layout:'M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z',grid:'M3 3h18v18H3zM3 9h18M9 3v18',users:'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M16 3a4 4 0 0 1 0 8M22 21v-2a4 4 0 0 0-3-3.87M13 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0',bag:'M6 7h12a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2ZM9 7V3h6v4M8 11v6m8-6v6',team:'M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M17 3a4 4 0 0 1 0 8M23 21v-2a4 4 0 0 0-3-3.87M13 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0',check:'m9 11 3 3L22 4M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11',bell:'M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4',chart:'M3 3v18h18M7 14v3m5-9v9m5-13v13',shield:'M12 22s9-4 9-11V4l-9-3-9 3v7c0 7 9 11 9 11Zm-4-11 3 3 5-5',history:'M3 12a9 9 0 1 0 2.5-6.2M3 3v5h5m4-1v5l3 2',search:'m21 21-6-6M17 10a7 7 0 1 1-14 0 7 7 0 0 1 14 0',plus:'M12 5v14M5 12h14',arrow:'M5 12h14m-6-6 6 6-6 6',chevron:'m9 5 7 7-7 7',clock:'M12 8v4l3 2M22 12a10 10 0 1 1-20 0 10 10 0 0 1 20 0',down:'m6 9 6 6 6-6',close:'m6 6 12 12M6 18 18 6',logout:'M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4m7 14 5-5-5-5m5 5H9',play:'m8 4 12 8-12 8V4Z',refresh:'M20 7a9 9 0 1 0 1 9m0-13v5h-5',menu:'M3 6h18M3 12h18M3 18h18',alert:'m12 3 10 18H2L12 3Zm0 5v5m0 4h.01',download:'M12 3v12m-5-5 5 5 5-5M3 16v5h18v-5'};
+  const A=window.AO={pages:{},actions:{},role:'presenter',page:'dashboard',resourceKind:'Gate',resourceDate:'2026-11-03',flightFilter:'All',demoTime:/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(db.demoTime||'')?db.demoTime:'10:30',get db(){return db;},get actor(){return A.role==='presenter'?'Presentation':db.users.find(u=>u.role===A.role&&u.status==='Active')?.name||roles[A.role];},roles,statusLabels};
+  A.h=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const h=A.h;
+  A.icon=name=>`<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${paths[name]||paths.grid}"/></svg>`;
+  A.badge=status=>{let color=['Boarding','Arrived','Completed','Active','Available','Delivered','Checked-in','Boarded'].includes(status)?'green':['Delayed','Pending','Screening','In use'].includes(status)?'amber':['Cancelled','Inactive','Maintenance','No-show'].includes(status)?'red':['In progress','Loaded'].includes(status)?'blue':'gray';return `<span class="badge ${color}"><span class="status-dot"></span>${h(statusLabels[status]||status)}</span>`;};
+  A.allowed=permission=>A.role==='presenter'||(permissionRoles[permission]||[]).includes(A.role);
+  A.now=()=> '2026-11-03 '+A.demoTime+':00';
+  A.id=prefix=>prefix+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+  A.flight=id=>db.flights.find(f=>f.id===id);
+  A.log=(action,entity,details)=>db.audit.unshift({id:A.id('L'),time:A.now(),actor:A.actor,role:A.role,action,entity,details:typeof details==='string'?details:JSON.stringify(details)});
+  A.notice=(title,text,type='info',flightId='')=>{const n={id:A.id('N'),time:A.demoTime,title,text,type,flightId,read:false};db.notices.unshift(n);return n;};
+  A.checkOperationalAlerts=()=>{
+    const overdueKeys=new Set(),clock='2026-11-03 '+A.demoTime;
+    for(const task of db.tasks){
+      const date=task.date||A.flight(task.flightId)?.date;
+      if(!['Pending','In progress'].includes(task.status)||!date||!task.end||date+' '+task.end>=clock)continue;
+      const key=['ground-overdue',task.id,date,task.end].join(':');overdueKeys.add(key);
+      let notice=db.notices.find(n=>n.key===key);
+      if(!notice){notice=A.notice('งานภาคพื้นเกินเวลาตามแผน',`${A.flight(task.flightId)?.number||task.flightId} · ${task.type} · กำหนดเสร็จ ${date} ${task.end} · เวลาจำลอง ${A.demoTime}`,'warning',task.flightId);notice.key=key;notice.resolved=false;}
+      else if(notice.resolved){notice.resolved=false;notice.read=false;notice.time=A.demoTime;}
+    }
+    db.notices.filter(n=>n.key?.startsWith('ground-overdue:')&&!overdueKeys.has(n.key)).forEach(n=>{n.resolved=true;n.read=true;});
+  };
+  A.save=()=>{db.demoTime=A.demoTime;A.checkOperationalAlerts();try{localStorage.setItem(KEY,JSON.stringify(db));}catch(_){A.toast('พื้นที่บันทึกเต็ม · การเปลี่ยนแปลงยังอยู่ในรอบสาธิตนี้');}A.render();};
+  let toastTimer;
+  A.toast=message=>{const t=document.getElementById('toast');t.textContent=message;t.className='toast show';clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.classList.remove('show'),4200);};
+  A.formError=message=>{const e=document.getElementById('form-error');e.hidden=false;e.textContent=message;e.focus();};
+  A.modal=(title,body,onSubmit,options={})=>{
+    const d=document.getElementById('modal');if(d.open)d.close();
+    d.innerHTML=`<form id="modal-form"><div class="modal-head"><div><div class="eyebrow">AEROPS WORKSPACE</div><h2 id="modal-title">${h(title)}</h2></div><button type="button" class="icon-button" data-action="closeModal" aria-label="ปิด">${A.icon('close')}</button></div><div class="modal-body">${body}<div id="form-error" class="error-box" hidden tabindex="-1" role="alert"></div></div><div class="modal-footer"><button type="button" class="btn btn-ghost" data-action="closeModal">${onSubmit?'ยกเลิก':'ปิด'}</button>${onSubmit?`<button class="btn btn-primary" type="submit">${h(options.submitLabel||'บันทึกข้อมูล')}</button>`:''}</div></form>`;
+    d.querySelector('form').onsubmit=event=>{event.preventDefault();if(!onSubmit)return;try{const values=Object.fromEntries(new FormData(event.currentTarget));if(onSubmit(values,event.currentTarget)!==false)d.close();}catch(error){A.formError('ไม่สามารถบันทึกได้: '+error.message);}};
+    d.showModal();
+  };
+  function canView(page){if(['dashboard','notifications'].includes(page))return true;if(page==='flights')return A.role!=='admin';if(page==='ground')return A.allowed('ground')||A.allowed('groundUpdate');return A.allowed(page);}
+  A.navigate=page=>{if(!canView(page)){A.toast('บทบาทนี้ไม่มีสิทธิ์เข้าถึงหน้านี้');return;}A.page=page;document.body.classList.remove('nav-open');A.render();window.scrollTo({top:0,behavior:'instant'});};
+  const btn=(label,action,id='',cls='btn-ghost')=>`<button type="button" class="btn ${cls} btn-sm" data-action="${action}" data-id="${h(id)}" ${action==='flightDetail'?`aria-label="รายละเอียดเที่ยวบิน ${h(A.flight(id)?.number||id)}"`:''}>${label}</button>`;
+  A.flightOptions=selected=>db.flights.filter(f=>f.status!=='Cancelled').map(f=>`<option value="${f.id}" ${f.id===selected?'selected':''}>${f.number} · ${f.from} → ${f.to}</option>`).join('');
+  function allocation(f,kind='Gate'){return db.allocations.find(a=>a.flightId===f.id&&a.kind===kind);}
+  function flightTable(flights,compact=false){return `<div class="table-wrap"><table class="data-table"><thead><tr><th>เที่ยวบิน</th><th>เส้นทาง</th><th>กำหนดการ</th><th>${compact?'Gate':'ประเภท / Gate'}</th><th>สถานะ</th><th><span class="sr-only">การดำเนินการ</span></th></tr></thead><tbody>${flights.map(f=>`<tr class="searchable" data-searchtext="${h([f.number,f.airline,f.from,f.to,f.date].join(' '))}"><td><div class="flight-cell"><span class="airline-logo ${f.code==='TG'?'purple':f.code==='FD'?'red':'blue'}">${f.code}</span><div><strong>${h(f.number)}</strong><span class="muted small">${h(f.airline)}</span></div></div></td><td><div class="route"><strong>${f.from}</strong><span class="muted">→</span><strong>${f.to}</strong></div><span class="muted small">${h(f.city)}</span></td><td><strong class="mono">${h(f.scheduled)}</strong>${f.estimated!==f.scheduled?`<span class="small" style="color:var(--amber)">คาดการณ์ ${h(f.estimated)}</span>`:`<span class="muted small">${f.date==='2026-11-03'?'03 พ.ย. 2026':h(f.date)}</span>`}</td><td>${!compact?`<span class="small muted">${f.type==='Departure'?'ขาออก':'ขาเข้า'}</span>`:''}<span class="mono">${allocation(f)?.resource||'—'}</span></td><td>${A.badge(f.status)}</td><td>${btn(A.icon('chevron'),'flightDetail',f.id,'icon-button')}</td></tr>`).join('')||'<tr><td colspan="6" class="empty">ไม่พบเที่ยวบินในเงื่อนไขนี้</td></tr>'}</tbody></table></div>`;}
+  function stat(icon,label,value,foot,color='green'){return `<div class="stat-card"><div class="stat-top"><span class="stat-label">${label}</span><span class="stat-icon ${color}">${A.icon(icon)}</span></div><div class="stat-value">${value}</div><div class="stat-foot">${foot}</div></div>`;}
+  function alertCard(n){return `<div class="alert-card ${n.type==='danger'?'danger':n.type==='warning'?'warning':'info'}"><div class="alert-icon">${A.icon(n.type==='info'?'bell':'alert')}</div><div class="alert-content"><strong>${h(n.title)}</strong>${n.resolved?'<span class="badge green">แก้ไขแล้ว</span>':''}<p>${h(n.text)}</p>${n.flightId?`<button type="button" class="text-button" data-action="flightDetail" data-id="${h(n.flightId)}">ดูเที่ยวบิน ${A.icon('arrow')}</button>`:''}</div></div>`;}
+  A.pages.dashboard=()=>{
+    const flights=db.flights.filter(f=>f.date==='2026-11-03'),dashboardTasks=db.tasks.filter(t=>t.status!=='Cancelled'),pending=dashboardTasks.filter(t=>['Pending','In progress'].includes(t.status)),unread=db.notices.filter(n=>!n.read),checked=db.passengers.filter(p=>['Checked-in','Boarded'].includes(p.status)).length;
+    return `<div class="presentation-banner"><span>${A.icon('play')} <strong>พร้อมสำหรับการสาธิต</strong><span class="banner-detail">ข้อมูลจำลอง · 03 พฤศจิกายน 2026 · BKK</span></span><button class="text-button" data-action="guide">เริ่มเส้นทางนำเสนอ ${A.icon('arrow')}</button></div><div class="stat-grid">${stat('plane','เที่ยวบินวันนี้',flights.length,`${flights.filter(f=>f.type==='Departure').length} ขาออก <span class="dot-separator">·</span> ${flights.filter(f=>f.type==='Arrival').length} ขาเข้า`)}${stat('alert','เที่ยวบินล่าช้า',flights.filter(f=>f.status==='Delayed').length,'เที่ยวบินที่ต้องติดตาม','amber')}${stat('check','งานภาคพื้น',`${dashboardTasks.filter(t=>t.status==='Completed').length}<small> / ${dashboardTasks.length}</small>`,`${pending.length} งานกำลังดำเนินการหรือรอเริ่ม`,'blue')}${stat('grid','ทรัพยากรที่จัดสรร',db.allocations.length,'Gate · Stand · Carousel')}</div><div class="dashboard-grid"><div><section class="panel"><div class="panel-head"><div><h2 class="panel-title">ตารางเที่ยวบิน</h2><span class="muted small">ภาพรวมประจำวัน · เวลาท้องถิ่นกรุงเทพฯ (UTC+7)</span></div><button class="btn btn-ghost btn-sm" data-action="nav" data-page="flights">ดูทั้งหมด ${A.icon('arrow')}</button></div>${flightTable(flights.slice(0,6),true)}</section><section class="panel" style="margin-top:22px"><div class="panel-head"><div><h2 class="panel-title">ความพร้อมภาคพื้น</h2><span class="muted small">เชื่อมคน อุปกรณ์ และงานของแต่ละเที่ยวบิน</span></div><span class="badge green">${Math.round(dashboardTasks.filter(t=>t.status==='Completed').length/Math.max(dashboardTasks.length,1)*100)}% สำเร็จ</span></div><div class="readiness-grid">${db.flights.filter(f=>['F01','F02','F03'].includes(f.id)).map(f=>{const tasks=db.tasks.filter(t=>t.flightId===f.id&&t.status!=='Cancelled'),done=tasks.filter(t=>t.status==='Completed').length;return `<button class="readiness-card" data-action="flightDetail" data-id="${f.id}"><div class="list-row"><strong>${f.number}</strong><span class="muted small">${f.from} → ${f.to}</span></div><div class="progress"><div class="progress-fill" style="width:${done/Math.max(tasks.length,1)*100}%"></div></div><div class="list-row small"><span>${done}/${tasks.length} งานเสร็จสิ้น</span><span class="muted">${allocation(f)?.resource||'ยังไม่มี Gate'}</span></div></button>`;}).join('')}</div></section></div><aside><section class="panel"><div class="panel-head"><h2 class="panel-title">ต้องติดตาม</h2><span class="nav-count">${unread.length}</span></div><div class="alert-list">${unread.slice(0,3).map(alertCard).join('')||'<div class="empty">ไม่มีการแจ้งเตือนใหม่</div>'}</div></section><section class="panel" style="margin-top:22px"><div class="panel-head"><h2 class="panel-title">กิจกรรมล่าสุด</h2><span class="small muted">DEMO</span></div><div class="activity-list">${db.audit.slice(0,4).map(l=>`<div class="activity-item"><span class="timeline-dot"></span><div><strong class="small">${h(l.action)}</strong><span class="muted small">${h(l.entity)} · ${h(l.actor)}</span><span class="mono small muted">${h(l.time.slice(11,16))}</span></div></div>`).join('')}</div></section></aside></div>`;
+  };
+  A.pages.flights=()=>{
+    let fs=db.flights.filter(f=>A.flightFilter==='All'||f.type===A.flightFilter);
+    return `<section class="panel"><div class="toolbar"><div class="segmented">${[['All','ทั้งหมด'],['Departure','ขาออก'],['Arrival','ขาเข้า']].map(([v,t])=>`<button class="segment ${v===A.flightFilter?'active':''}" data-action="flightFilter" data-filter="${v}">${t}</button>`).join('')}</div><label class="search-wrap">${A.icon('search')}<input class="search-input" data-table-search placeholder="ค้นหาเที่ยวบิน สายการบิน หรือเส้นทาง" aria-label="ค้นหาเที่ยวบิน"></label><input type="date" class="date-filter" data-change="flightDate" value="${h(A.flightDate||'')}" aria-label="กรองวันที่"></div>${flightTable(fs.filter(f=>!A.flightDate||f.date===A.flightDate))}<div class="panel-bottom small muted">${fs.length} เที่ยวบินในชุดข้อมูลสาธิต · กดลูกศรเพื่อดูข้อมูลรวมและ Timeline</div></section>`;
+  };
+  A.actions.flightFilter=e=>{A.flightFilter=e.dataset.filter;A.render();};
+  A.actions.flightDate=e=>{A.flightDate=e.value;A.render();};
+  function flightForm(f){return `<div class="form-grid"><label class="field">หมายเลขเที่ยวบิน<input name="number" required maxlength="8" pattern="[A-Za-z0-9]{3,8}" value="${h(f?.number||'')}" placeholder="เช่น TG900"></label><label class="field">สายการบิน<input name="airline" required value="${h(f?.airline||'')}" placeholder="เช่น Thai Airways"></label><label class="field">ต้นทาง (IATA)<input name="from" required pattern="[A-Za-z]{3}" maxlength="3" value="${h(f?.from||'BKK')}"></label><label class="field">ปลายทาง (IATA)<input name="to" required pattern="[A-Za-z]{3}" maxlength="3" value="${h(f?.to||'')}"></label><label class="field">เมืองต้นทาง / ปลายทาง<input name="city" required value="${h(f?.city||'')}"></label><label class="field">ประเภท<select name="type"><option ${f?.type!=='Arrival'?'selected':''}>Departure</option><option ${f?.type==='Arrival'?'selected':''}>Arrival</option></select></label><label class="field">วันที่<input type="date" name="date" required value="${h(f?.date||'2026-11-03')}"></label><label class="field">เวลาตามตาราง<input type="time" name="scheduled" required value="${h(f?.scheduled||'12:30')}"></label><label class="field">อากาศยาน<select name="aircraft">${['A320','A350','B737','B777'].map(s=>`<option ${f?.aircraft===s?'selected':''}>${s}</option>`).join('')}</select></label><label class="field">สถานะ<select name="status">${['Scheduled','Boarding','Delayed','Departed','Arrived','Cancelled'].map(s=>`<option value="${s}" ${f?.status===s?'selected':''}>${statusLabels[s]}</option>`).join('')}</select></label><label class="field">เวลาคาดการณ์<input name="estimated" type="time" value="${h(f?.estimated||'12:30')}" required></label><label class="field">เวลาขึ้น / ลงจอดจริง<input name="actual" type="time" value="${h(f?.actual||'')}"></label><label class="field full">สาเหตุล่าช้า / หมายเหตุ<input name="delayReason" value="${h(f?.delayReason||'')}" placeholder="จำเป็นเมื่อเที่ยวบินล่าช้า"></label></div><p class="helper">บันทึกแล้วจะปรับข้อมูลรวมและ Audit Log อัตโนมัติ</p>`;}
+  A.actions.editFlight=e=>{if(!A.allowed('flights'))return A.toast('Operations Officer เท่านั้นที่แก้ไขเที่ยวบินได้');const f=A.flight(e?.dataset.id);A.modal(f?'แก้ไขเที่ยวบิน '+f.number:'เพิ่มเที่ยวบิน',flightForm(f),v=>{
+    v.number=v.number.trim().toUpperCase();v.from=v.from.toUpperCase();v.to=v.to.toUpperCase();
+    if(v.from===v.to)return A.formError('ต้นทางและปลายทางต้องต่างกัน'),false;
+    if(db.flights.some(x=>x.id!==f?.id&&x.number===v.number&&x.date===v.date))return A.formError('เที่ยวบินหมายเลขนี้มีอยู่แล้วในวันที่เลือก'),false;
+    if((v.status==='Delayed'||(['Arrived','Departed'].includes(v.status)&&v.actual>v.scheduled))&&!v.delayReason.trim())return A.formError('กรุณาระบุสาเหตุที่เที่ยวบินล่าช้า'),false;
+    if(['Arrived','Departed'].includes(v.status)&&!v.actual)return A.formError('กรุณาบันทึกเวลาขึ้นหรือลงจอดจริง'),false;
+    if(f&&f.date!==v.date&&(db.allocations.some(a=>a.flightId===f.id)||db.tasks.some(t=>t.flightId===f.id)))return A.formError('เที่ยวบินนี้มีทรัพยากรหรืองานภาคพื้นแล้ว กรุณายกเลิกการจัดสรรก่อนเปลี่ยนวันที่'),false;
+    const incompatibleStand=f&&v.status!=='Cancelled'&&['A350','B777'].includes(v.aircraft)&&db.allocations.find(a=>a.flightId===f.id&&a.kind==='Stand'&&['S04','S05'].includes(a.resource));
+    if(incompatibleStand)return A.formError(`Parking Stand ${incompatibleStand.resource} ไม่รองรับ ${v.aircraft} กรุณาเปลี่ยนการจัดสรร Stand ก่อนแก้ไขอากาศยาน`),false;
+    const before=f?JSON.stringify(f):'new',oldActual=f?.actual;
+    if(f){Object.assign(f,v,{code:v.number.slice(0,2)});f.events.push({time:A.demoTime,title:'อัปเดตเที่ยวบิน',detail:statusLabels[f.status]+' · คาดการณ์ '+f.estimated});}else db.flights.push({...v,id:A.id('F'),code:v.number.slice(0,2),events:[{time:A.demoTime,title:'สร้างเที่ยวบิน',detail:v.from+' → '+v.to}]});
+    if(v.actual&&v.actual!==oldActual&&['Arrived','Departed'].includes(v.status)){
+      (f||db.flights.at(-1)).events.push({time:v.actual,title:v.status==='Arrived'?'ลงจอดจริง':'ออกเดินทางจริง',detail:v.number+(v.delayReason?' · '+v.delayReason:'')});
+    }
+    if(v.status==='Cancelled'&&f){
+      db.allocations=db.allocations.filter(a=>a.flightId!==f.id);
+      const cancelledTasks=db.tasks.filter(t=>t.flightId===f.id&&!['Completed','Cancelled'].includes(t.status));
+      cancelledTasks.forEach(t=>{t.status='Cancelled';t.note=(t.note?t.note+' · ':'')+'ยกเลิกตามสถานะเที่ยวบิน';});
+      cancelledTasks.forEach(t=>{
+        const s=db.staff.find(s=>s.id===t.staffId),eq=db.equipment.find(eq=>eq.id===t.equipmentId);
+        if(s&&!db.tasks.some(x=>x.staffId===s.id&&!['Completed','Cancelled'].includes(x.status))&&s.status==='On duty')s.status='Available';
+        if(eq&&!db.tasks.some(x=>x.equipmentId===eq.id&&!['Completed','Cancelled'].includes(x.status))&&eq.status==='In use')eq.status='Available';
+      });
+      if(cancelledTasks.length)A.log('ยกเลิกงานตามเที่ยวบิน',f.number,'task IDs: '+cancelledTasks.map(t=>t.id).join(', ')+'; คงประวัติและคืนความพร้อมทรัพยากร');
+    }
+    A.log(f?'แก้ไขเที่ยวบิน':'เพิ่มเที่ยวบิน',v.number,'ก่อน: '+before+'; หลัง: '+JSON.stringify(v));if(v.status==='Delayed'||v.status==='Cancelled')A.notice(v.number+' '+statusLabels[v.status],v.delayReason||'อัปเดตสถานะเที่ยวบิน',v.status==='Delayed'?'warning':'danger',f?.id||db.flights.at(-1).id);A.save();A.toast('บันทึกเที่ยวบินและประวัติแล้ว');
+  });};
+  A.actions.flightDetail=e=>{
+    const f=A.flight(e.dataset.id);if(!f)return A.toast('ไม่พบเที่ยวบินนี้');
+    const allocations=db.allocations.filter(x=>x.flightId===f.id),tasks=db.tasks.filter(t=>t.flightId===f.id),passengers=db.passengers.filter(p=>p.flightId===f.id),bags=db.bags.filter(b=>b.flightId===f.id);
+    const baggageOverview=`<h3 class="section-heading">สถานะสัมภาระ · ${bags.length} ชิ้น</h3>${bags.length?`<div class="table-wrap"><table class="data-table"><thead><tr><th>Baggage Tag</th><th>ผู้โดยสาร</th><th>สถานะล่าสุด</th><th>อัปเดตเมื่อ</th></tr></thead><tbody>${bags.map(b=>`<tr><td class="mono">${h(b.id)}</td><td>${h(db.passengers.find(p=>p.id===b.passengerId)?.name||b.passengerId)}</td><td>${A.badge(b.status)}</td><td class="mono">${h(b.history?.at(-1)?.time||'—')}</td></tr>`).join('')}</tbody></table></div>`:'<p class="muted">ยังไม่มีสัมภาระลงทะเบียนสำหรับเที่ยวบินนี้</p>'}`;
+    A.modal(f.number+' · Flight overview',`<div class="flight-hero"><div class="list-row"><span class="eyebrow">${h(f.airline)} · ${h(f.aircraft)}</span>${A.badge(f.status)}</div><div class="route-display"><div><strong class="airport-code">${h(f.from)}</strong><span class="muted small">${f.type==='Departure'?'ต้นทาง':'เดินทางจาก'}</span></div><div class="hero-plane">${A.icon('plane')}<span class="small muted">${h(f.date)}</span></div><div><strong class="airport-code">${h(f.to)}</strong><span class="muted small">${h(f.city)}</span></div></div></div><div class="detail-grid"><div class="info-item"><span>เวลาตามตาราง</span><strong class="mono">${f.scheduled}</strong></div><div class="info-item"><span>เวลาคาดการณ์</span><strong class="mono">${f.estimated}</strong></div><div class="info-item"><span>เวลาจริง</span><strong class="mono">${f.actual||'ยังไม่บันทึก'}</strong></div><div class="info-item"><span>ผู้โดยสาร / สัมภาระ</span><strong>${passengers.length} คน / ${bags.length} ชิ้น</strong></div></div>${f.delayReason?`<div class="warning-box">${h(f.delayReason)}</div>`:''}<h3 class="section-heading">ทรัพยากรที่จัดสรร</h3><div class="detail-grid">${['Gate','Stand','Carousel'].map(kind=>{const a=allocations.find(a=>a.kind===kind);return `<div class="info-item"><span>${kind==='Stand'?'Parking Stand':kind==='Carousel'?'Baggage Carousel':kind}</span><strong>${a?h(a.resource):'ยังไม่จัดสรร'}</strong>${a?`<span class="mono small">${a.start}–${a.end}</span>`:''}</div>`;}).join('')}</div><h3 class="section-heading">งานบริการภาคพื้น</h3>${tasks.map(t=>`<div class="list-row" style="padding:10px 0;border-bottom:1px solid var(--line)"><div><strong class="small">${h(t.type)}</strong><span class="small muted">${h(db.staff.find(s=>s.id===t.staffId)?.name||'ยังไม่มอบหมาย')} · ${t.start}–${t.end}</span></div>${A.badge(t.status)}</div>`).join('')||'<p class="muted">ยังไม่มีงานสำหรับเที่ยวบินนี้</p>'}${baggageOverview}<h3 class="section-heading">ลำดับเหตุการณ์</h3><div class="timeline">${[...f.events].sort((a,b)=>b.time.localeCompare(a.time)).map(event=>`<div class="timeline-item"><span class="timeline-dot"></span><div class="timeline-time mono">${h(event.time)}</div><div class="timeline-content"><strong>${h(event.title)}</strong><p>${h(event.detail||'')}</p></div></div>`).join('')}</div><div class="heading-actions">${A.allowed('flights')?`${btn('แก้ไขเที่ยวบิน','editFlight',f.id)}${btn('เพิ่มเหตุการณ์','addEvent',f.id)}${btn('ลบเที่ยวบิน','deleteFlight',f.id,'btn-danger')}`:''}</div>`);
+  };
+  A.actions.addEvent=e=>{if(!A.allowed('flights'))return;const f=A.flight(e.dataset.id);A.modal('บันทึกเหตุการณ์ · '+f.number,`<div class="form-grid"><label class="field">เวลา<input name="time" type="time" value="10:30" required></label><label class="field">เหตุการณ์<input name="title" required maxlength="100" placeholder="เช่น พร้อมขึ้นเครื่อง"></label><label class="field full">รายละเอียด<textarea name="detail" rows="3"></textarea></label></div>`,v=>{f.events.push(v);f.events.sort((a,b)=>a.time.localeCompare(b.time));A.log('บันทึกเหตุการณ์',f.number,JSON.stringify(v));A.save();A.toast('เพิ่มเหตุการณ์ใน Timeline แล้ว');});};
+  A.actions.deleteFlight=e=>{if(!A.allowed('flights'))return;const f=A.flight(e.dataset.id);A.modal('ลบเที่ยวบิน '+f.number,`<p>ยืนยันลบเที่ยวบิน ${h(f.number)} จากข้อมูลสาธิต?</p><p class="helper">เที่ยวบินที่มีข้อมูลผู้โดยสาร สัมภาระ งาน หรือทรัพยากรเชื่อมโยงอยู่จะลบไม่ได้</p>`,()=>{if(['passengers','bags','tasks','allocations'].some(k=>db[k].some(x=>x.flightId===f.id)))return A.formError('ลบไม่ได้เนื่องจากมีข้อมูลที่เชื่อมโยงอยู่ ใช้สถานะยกเลิกแทนได้'),false;db.flights=db.flights.filter(x=>x.id!==f.id);A.log('ลบเที่ยวบิน',f.number,JSON.stringify(f));A.save();A.toast('ลบเที่ยวบินแล้ว');},{submitLabel:'ยืนยันลบ'});};
+  const resources={Gate:['A04','A06','B02','B04','B06'],Stand:['S01','S02','S03','S04','S05'],Carousel:['C01','C02','C03','C04']};
+  A.resources=resources;
+  function resourceWrite(kind){return A.role==='presenter'||A.role==={Gate:'gate',Stand:'ramp',Carousel:'baggage'}[kind];}
+  const minutes=t=>Number(t.slice(0,2))*60+Number(t.slice(3,5));
+  A.overlap=(s1,e1,s2,e2)=>s1<e2&&s2<e1;
+  A.conflictingAllocation=v=>db.allocations.find(a=>a.kind===v.kind&&a.resource===v.resource&&a.date===v.date&&a.flightId!==v.flightId&&A.overlap(v.start,v.end,a.start,a.end));
+  A.validateAllocation=v=>{
+    const f=A.flight(v.flightId);if(!f||f.status==='Cancelled')return 'ไม่สามารถจัดสรรให้เที่ยวบินที่ยกเลิกได้';
+    if(!resources[v.kind]?.includes(v.resource))return 'ไม่พบทรัพยากรนี้';
+    if(v.resource==='B06')return 'Gate B06 อยู่ระหว่างซ่อมบำรุง';
+    if(!v.start||!v.end||v.start>=v.end)return 'เวลาเริ่มต้องน้อยกว่าเวลาสิ้นสุด';
+    if(v.date!==f.date)return 'วันที่ใช้งานต้องตรงกับวันของเที่ยวบิน';
+    if(v.kind==='Stand'&&['A350','B777'].includes(f.aircraft)&&['S04','S05'].includes(v.resource))return 'Parking Stand นี้รองรับอากาศยานขนาดเล็กเท่านั้น กรุณาเลือก S01–S03 สำหรับ '+f.aircraft;
+    const conflict=A.conflictingAllocation(v);
+    if(conflict)return `${v.resource} ถูกจองโดย ${A.flight(conflict.flightId)?.number} เวลา ${conflict.start}–${conflict.end} กรุณาเลือกช่วงเวลาหรือทรัพยากรอื่น`;
+    return '';
+  };
+  A.pages.resources=()=>{
+    const kind=A.resourceKind,as=db.allocations.filter(a=>a.kind===kind&&a.date===A.resourceDate);
+    return `<div class="stat-grid resource-stats">${stat('grid','Gate ที่จัดสรร',db.allocations.filter(a=>a.kind==='Gate'&&a.date===A.resourceDate).length,'จากทั้งหมด 5 Gate · ซ่อมบำรุง 1')}${stat('plane','Parking Stand ที่จัดสรร',db.allocations.filter(a=>a.kind==='Stand'&&a.date===A.resourceDate).length,'รองรับอากาศยานตามขนาด')}${stat('bag','Carousel ที่จัดสรร',db.allocations.filter(a=>a.kind==='Carousel'&&a.date===A.resourceDate).length,'จากทั้งหมด 4 สายพาน')}</div><section class="panel"><div class="toolbar"><div class="segmented">${Object.keys(resources).map(k=>`<button class="segment ${kind===k?'active':''}" data-action="resourceKind" data-kind="${k}">${k==='Stand'?'Parking Stand':k==='Carousel'?'Baggage Carousel':k}</button>`).join('')}</div><label class="field inline-field">วันที่ <input type="date" data-change="resourceDate" value="${A.resourceDate}"></label>${resourceWrite(kind)?`<button class="btn btn-primary" data-action="assignResource">${A.icon('plus')} จัดสรร ${kind}</button>`:''}</div><div class="resource-grid"><div class="resource-row resource-ticks"><div class="resource-label">ทรัพยากร</div><div class="resource-track">${[8,9,10,11,12,13,14].map(t=>`<span style="left:${(t-8)/6*100}%">${t}:00</span>`).join('')}</div></div>${resources[kind].map(resource=>`<div class="resource-row"><div class="resource-label"><strong>${resource}</strong><span class="small muted">${resource==='B06'?'ซ่อมบำรุง':kind==='Stand'?(['S04','S05'].includes(resource)?'Narrow body':'Wide body'):'พร้อมใช้งาน'}</span></div><div class="resource-track time-grid">${resource==='B06'?'<div class="maintenance-block">MAINTENANCE</div>':as.filter(a=>a.resource===resource).map(a=>{let left=Math.max(0,(minutes(a.start)-480)/360*100),width=Math.min(100-left,(minutes(a.end)-Math.max(minutes(a.start),480))/360*100);return width>0?`<button class="booking ${kind==='Carousel'?'blue':kind==='Stand'?'amber':'teal'}" style="left:${left}%;width:${width}%" data-action="allocationDetail" data-id="${a.id}" title="${h(A.flight(a.flightId)?.number)} ${a.start}–${a.end}"><strong>${h(A.flight(a.flightId)?.number)}</strong><span>${a.start}–${a.end}</span></button>`:'';}).join('')}</div></div>`).join('')}</div><div class="panel-bottom resource-legend"><span><i class="legend-dot green"></i> จัดสรรแล้ว</span><span><i class="legend-dot gray"></i> พร้อมจัดสรร</span><span class="muted">แผนภาพแสดง 08:00–14:00 · รายการทั้งหมดอยู่ด้านล่าง</span></div></section><section class="panel" style="margin-top:22px"><div class="panel-head"><h2 class="panel-title">รายการจัดสรร ${kind}</h2><span class="muted small">${as.length} รายการ</span></div><div class="table-wrap"><table class="data-table"><thead><tr><th>ทรัพยากร</th><th>เที่ยวบิน</th><th>ช่วงเวลา</th><th>วันที่</th><th></th></tr></thead><tbody>${as.map(a=>`<tr><td><strong>${h(a.resource)}</strong></td><td>${h(A.flight(a.flightId)?.number)}</td><td class="mono">${a.start}–${a.end}</td><td>${a.date}</td><td>${btn('รายละเอียด','allocationDetail',a.id)}</td></tr>`).join('')||'<tr><td colspan="5" class="empty">ยังไม่มีการจัดสรรในวันที่เลือก</td></tr>'}</tbody></table></div></section><p class="helper">การจองใช้ช่วงเวลาเริ่ม–สิ้นสุด โดยเวลาสิ้นสุดตรงกับเวลาเริ่มของเที่ยวบินถัดไปได้ ระบบตรวจเวลาทับซ้อนก่อนบันทึกทุกครั้ง</p>`;
+  };
+  A.actions.resourceKind=e=>{A.resourceKind=e.dataset.kind;A.render();};
+  A.actions.resourceDate=e=>{A.resourceDate=e.value||'2026-11-03';A.render();};
+  A.actions.assignResource=e=>{
+    const old=db.allocations.find(a=>a.id===e?.dataset.id),kind=old?.kind||A.resourceKind;
+    if(!resourceWrite(kind))return A.toast('บทบาทนี้ดูภาพรวมได้ แต่ไม่มีสิทธิ์จัดสรร '+kind);
+    A.modal('จัดสรร '+kind,`<div class="form-grid"><label class="field full">เที่ยวบิน<select name="flightId" required>${A.flightOptions(old?.flightId||'F03')}</select></label><label class="field">${kind}<select name="resource">${resources[kind].map(r=>`<option value="${r}" ${r===(old?.resource||resources[kind][0])?'selected':''} ${r==='B06'?'disabled':''}>${r}${r==='B06'?' · ซ่อมบำรุง':''}</option>`).join('')}</select></label><label class="field">วันที่<input type="date" name="date" required value="${old?.date||A.resourceDate}"></label><label class="field">เริ่มใช้งาน<input name="start" type="time" required value="${old?.start||'10:30'}"></label><label class="field">สิ้นสุด<input name="end" type="time" required value="${old?.end||'11:30'}"></label></div><div class="warning-box">ระบบจะตรวจช่วงเวลาทับซ้อนก่อนบันทึก · เปลี่ยน Gate แล้วจะแจ้งเตือนและบันทึกใน Timeline</div>`,v=>{
+      v.kind=kind;const error=A.validateAllocation(v);if(error){
+        if(A.conflictingAllocation(v)){
+          const key=['resource-conflict',kind,v.resource,v.date,v.start,v.end,v.flightId].join(':');
+          let notice=db.notices.find(n=>n.key===key);
+          if(!notice){notice=A.notice('ทรัพยากรมีเวลาทับซ้อน',`${A.flight(v.flightId)?.number} · ${error}`,'danger',v.flightId);notice.key=key;notice.resourceKind=kind;A.log('ปฏิเสธการจัดสรร',A.flight(v.flightId)?.number,error);}
+          notice.read=false;notice.resolved=false;A.save();
+        }
+        return A.formError(error),false;
+      }
+      const previous=db.allocations.find(a=>a.kind===kind&&a.flightId===v.flightId),before=previous?JSON.stringify(previous):'ไม่มีการจัดสรร';
+      if(old&&old.flightId!==v.flightId)return A.formError('กรุณายกเลิกการจัดสรรเดิมก่อนเปลี่ยนเที่ยวบิน'),false;
+      if(previous)Object.assign(previous,v);else db.allocations.push({...v,id:A.id('A')});
+      const f=A.flight(v.flightId);f.events.push({time:A.now().slice(11,16),title:'จัดสรร '+kind+' '+v.resource,detail:v.start+'–'+v.end});
+      db.notices.filter(n=>n.key?.startsWith('resource-conflict:')&&n.flightId===f.id&&n.resourceKind===kind).forEach(n=>{n.resolved=true;n.read=true;});
+      A.log('จัดสรร '+kind,f.number,'ก่อน: '+before+'; หลัง: '+JSON.stringify(v));A.notice(f.number+' · '+kind+' '+v.resource,`จัดสรร ${v.start}–${v.end}${previous?' (แก้ไขการจอง)':''}`,'info',f.id);A.save();A.toast('จัดสรรสำเร็จ · อัปเดต Timeline และการแจ้งเตือนแล้ว');
+    });
+  };
+  A.actions.allocationDetail=e=>{const a=db.allocations.find(a=>a.id===e.dataset.id);if(!a)return;A.modal(a.kind+' '+a.resource,`<div class="detail-grid"><div class="info-item"><span>เที่ยวบิน</span><strong>${h(A.flight(a.flightId)?.number)}</strong></div><div class="info-item"><span>วันที่</span><strong>${a.date}</strong></div><div class="info-item"><span>ช่วงเวลา</span><strong>${a.start}–${a.end}</strong></div></div>${resourceWrite(a.kind)?`<div class="heading-actions">${btn('แก้ไขการจัดสรร','assignResource',a.id)}${btn('ยกเลิกการจัดสรร','removeAllocation',a.id,'btn-danger')}</div>`:''}`);};
+  A.actions.removeAllocation=e=>{const a=db.allocations.find(a=>a.id===e.dataset.id);if(!a||!resourceWrite(a.kind))return;A.modal('ยกเลิกการจัดสรร',`<p>ยกเลิก ${h(a.kind)} ${h(a.resource)} ของ ${h(A.flight(a.flightId)?.number)} เวลา ${a.start}–${a.end}?</p>`,()=>{db.allocations=db.allocations.filter(x=>x.id!==a.id);A.log('ยกเลิกการจัดสรร',A.flight(a.flightId)?.number,JSON.stringify(a));A.notice('ยกเลิก '+a.kind+' '+a.resource,A.flight(a.flightId)?.number+' · กรุณาตรวจสอบการจัดสรรใหม่','warning',a.flightId);A.save();A.toast('คืนทรัพยากรแล้ว');});};
+  A.pages.notifications=()=>`<div class="toolbar" style="padding:0 0 20px"><span class="muted">${db.notices.filter(n=>!n.read).length} รายการยังไม่อ่าน</span><button class="btn btn-ghost" data-action="readAll">ทำเครื่องหมายอ่านทั้งหมด</button></div><section class="panel"><div class="alert-list">${db.notices.map(n=>`<div class="notification-row ${n.read?'read':''}">${alertCard(n)}<div class="notification-meta"><span class="mono small muted">${h(n.time)}</span><button class="text-button" data-action="readNotice" data-id="${n.id}">${n.read?'อ่านแล้ว':'ทำเครื่องหมายว่าอ่านแล้ว'}</button></div></div>`).join('')||'<div class="empty">ยังไม่มีการแจ้งเตือน</div>'}</div></section>`;
+  A.actions.readAll=()=>{db.notices.forEach(n=>n.read=true);A.save();A.toast('อ่านการแจ้งเตือนทั้งหมดแล้ว');};
+  A.actions.readNotice=e=>{const n=db.notices.find(n=>n.id===e.dataset.id);if(n){n.read=true;A.save();}};
+  A.actions.nav=e=>A.navigate(e.dataset.page);
+  A.actions.closeModal=()=>document.getElementById('modal').close();
+  A.actions.menu=()=>document.body.classList.toggle('nav-open');
+  A.actions.guide=()=>A.modal('เส้นทางนำเสนอ · ประมาณ 5–8 นาที',`<p class="helper">ใช้โหมดนำเสนอเพื่อเดินทุกขั้นตอนได้ทันที หรือสลับบทบาทจากมุมขวาบนเพื่อสาธิตสิทธิ์แต่ละฝ่าย</p><div class="guide-list">${[
+    ['flights','01','เปิดเที่ยวบิน TG405','ดูผู้โดยสาร ทรัพยากร งานภาคพื้น และ Timeline ในหน้าเดียว'],
+    ['resources','02','ลองจอง Gate ที่มีเวลาทับซ้อน','เลือก TG612 · A04 · 10:30–11:30 จะถูกปฏิเสธ จากนั้นเปลี่ยนเป็น B04 เพื่อบันทึกสำเร็จ'],
+    ['passengers','03','เช็กอิน Ploy Demo','เปลี่ยนสถานะจากจองแล้วเป็นเช็กอินแล้ว ก่อนลงทะเบียนสัมภาระ'],
+    ['baggage','04','ออก Baggage Tag','เลือก Ploy Demo เพิ่มสัมภาระ 2 ชิ้น แล้วค้นหา Tag และอัปเดตสถานะ'],
+    ['ground','05','มอบหมายและทำงานภาคพื้น','มอบหมาย T01 ให้ Kittipong Demo และ Belt loader 01 จากนั้นสลับ Ground Staff เพื่อเริ่ม / เสร็จงาน'],
+    ['reports','06','ปิดด้วยรายงานและ Audit Log','ส่งออก Excel หรือพิมพ์ PDF แล้วสลับ Admin เพื่อตรวจสอบผู้แก้ไขและรายละเอียด']
+  ].map(([page,num,title,text])=>`<button class="guide-step" data-action="guideGo" data-page="${page}"><span class="guide-number">${num}</span><span><strong class="guide-step-title">${title}</strong><span class="muted small">${text}</span></span>${A.icon('arrow')}</button>`).join('')}</div><div class="warning-box">Prototype ใช้ข้อมูลสมมติและบันทึกในเบราว์เซอร์ · ใช้ปุ่มรีเซ็ตข้อมูลตัวอย่างเพื่อเริ่มนำเสนอใหม่</div>`);
+  A.actions.guideGo=e=>{document.getElementById('modal').close();if(!canView(e.dataset.page))return A.toast('บทบาทนี้ไม่มีสิทธิ์ในหน้านี้ กรุณาเลือกโหมดนำเสนอหรือบทบาทที่เกี่ยวข้องจากเมนูด้านบน');A.navigate(e.dataset.page);};
+  A.actions.reset=()=>A.modal('เริ่มข้อมูลตัวอย่างใหม่',`<p>คืนข้อมูลสาธิตทุกหน้ากลับเป็นชุดเริ่มต้น? การแก้ไขใน Prototype รอบนี้จะถูกแทนที่ และเวลาจำลองจะกลับเป็น 10:30</p>`,()=>{db=makeAirportDemo();A.demoTime='10:30';A.page='dashboard';A.save();A.toast('พร้อมเริ่มสาธิตรอบใหม่แล้ว');},{submitLabel:'รีเซ็ตข้อมูลตัวอย่าง'});
+  A.actions.demoClock=e=>{if(!/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(e.value)){e.value=A.demoTime;return;}const before=A.demoTime;A.demoTime=e.value;A.log('เปลี่ยนเวลาจำลอง','DEMO',before+' → '+A.demoTime);A.save();A.toast('เวลาจำลอง '+A.demoTime+' · อัปเดตการแจ้งเตือนแล้ว');};
+  A.actions.switchRole=e=>{const next=e.value;if(!roles[next])return;if(next!=='presenter'&&!db.users.some(u=>u.role===next&&u.status==='Active')){A.toast('ไม่มีบัญชีที่เปิดใช้งานสำหรับบทบาทนี้');A.render();return;}A.log('ออกจากบทบาทสาธิต',A.actor,'role: '+A.role);A.role=next;try{sessionStorage.setItem('aerops-role',next);}catch(_){}A.log('เข้าสู่บทบาทสาธิต',A.actor,'role: '+next);if(!canView(A.page))A.page='dashboard';A.save();A.toast('สลับเป็น '+roles[next]);};
+  A.actions.logout=()=>{A.log('ออกจากระบบสาธิต',A.actor,'session closed');try{sessionStorage.setItem('aerops-loggedout','1');localStorage.setItem(KEY,JSON.stringify(db));}catch(_){}renderLogin();};
+  A.actions.login=()=>{const selected=document.querySelector('#login-role').value;A.role=selected;try{sessionStorage.removeItem('aerops-loggedout');sessionStorage.setItem('aerops-role',selected);}catch(_){}A.page='dashboard';A.log('เข้าสู่ระบบสาธิต',A.actor,'เลือกบทบาท '+selected);A.save();};
+  function renderLogin(){document.getElementById('app').innerHTML=`<div class="login-screen"><section class="login-visual"><div class="brand"><span class="brand-mark">${A.icon('plane')}</span><span>AEROPS</span></div><div><div class="eyebrow">AIRPORT OPERATIONS MANAGEMENT</div><h1>Every flight.<br>One connected team.</h1><p>เชื่อมการปฏิบัติการสนามบิน<br>ตั้งแต่เที่ยวบินแรก จนสัมภาระชิ้นสุดท้าย</p></div><span class="small">SYSTEM PROTOTYPE · GROUP 1</span></section><section class="login-card"><div class="eyebrow">WELCOME TO AEROPS</div><h1>เริ่มต้นการสาธิต</h1><p class="muted">เลือกบทบาทเพื่อทดลองขั้นตอนการทำงาน</p><label class="field">บทบาทผู้ใช้งาน<select id="login-role">${Object.entries(roles).filter(([k])=>k==='presenter'||db.users.some(u=>u.role===k&&u.status==='Active')).map(([k,v])=>`<option value="${k}">${v}</option>`).join('')}</select></label><button class="btn btn-primary" data-action="login">เข้าสู่ระบบสาธิต ${A.icon('arrow')}</button><p class="helper">โหมดนำเสนอเข้าถึงได้ทุกหน้า · บทบาทอื่นจะแสดงเมนูตามสิทธิ์</p><div class="warning-box">นี่คือการจำลองการเข้าสู่ระบบสำหรับนำเสนอ ไม่ใช่ระบบยืนยันตัวตนจริง ข้อมูลทั้งหมดเป็นตัวอย่าง</div></section></div>`;}
+  function headingAction(){if(A.page==='flights'&&A.allowed('flights'))return `<button class="btn btn-primary" data-action="editFlight">${A.icon('plus')} เพิ่มเที่ยวบิน</button>`;return `<button class="btn btn-ghost" data-action="guide">${A.icon('play')} คู่มือสาธิต</button>`;}
+  A.render=()=>{
+    const title=titles[A.page]||titles.dashboard,unread=db.notices.filter(n=>!n.read).length;
+    document.title='AEROPS · '+title[0];
+    document.getElementById('app').innerHTML=`<div class="app-shell"><aside class="sidebar"><a class="brand" href="#" data-action="nav" data-page="dashboard"><span class="brand-mark">${A.icon('plane')}</span><span>AEROPS<small>AIRPORT OPERATIONS</small></span></a><div class="airport-selector"><span class="airport-monogram">BKK</span><div><strong>Suvarnabhumi</strong><span class="muted small">Bangkok · Terminal 1</span></div><span class="demo-badge">DEMO</span></div><nav aria-label="เมนูหลัก">${nav.map(([page,icon,label,section])=>`${section?`<div class="nav-section">${section}</div>`:''}${canView(page)?`<button type="button" class="nav-item ${page===A.page?'active':''}" data-action="nav" data-page="${page}" ${page===A.page?'aria-current="page"':''}><span class="nav-icon">${A.icon(icon)}</span><span class="nav-label">${label}</span>${page==='notifications'&&unread?`<span class="nav-count">${unread}</span>`:''}</button>`:''}`).join('')}</nav><div class="sidebar-bottom"><div class="demo-note"><span class="live-dot"></span><strong>Presentation prototype</strong><p>ข้อมูลสมมติ · บันทึกในเบราว์เซอร์</p></div><button class="nav-item" data-action="reset">${A.icon('refresh')}<span>รีเซ็ตข้อมูลตัวอย่าง</span></button><button class="nav-item" data-action="logout">${A.icon('logout')}<span>ออกจากระบบสาธิต</span></button></div></aside><div class="workspace"><header class="topbar"><div class="breadcrumb"><button class="icon-button menu-toggle" data-action="menu" aria-label="เปิดเมนู">${A.icon('menu')}</button><span>Workspace</span>${A.icon('chevron')}<strong>${title[0]}</strong></div><div class="topbar-actions"><label class="demo-clock"><span>เวลาจำลอง</span><input type="time" aria-label="เวลาจำลอง" data-change="demoClock" value="${h(A.demoTime)}" required></label><span class="demo-badge top-demo">DEMO MODE</span><label class="sr-only" for="role-select">สลับบทบาทสาธิต</label><select class="role-select" id="role-select" data-change="switchRole">${Object.entries(roles).map(([k,v])=>`<option value="${k}" ${k===A.role?'selected':''}>${v}</option>`).join('')}</select><button class="icon-button notification-button" data-action="nav" data-page="notifications" aria-label="การแจ้งเตือน ${unread} รายการ">${A.icon('bell')}${unread?'<i></i>':''}</button><span class="avatar" title="${h(A.actor)}">${A.role==='presenter'?'PR':A.role.slice(0,2).toUpperCase()}</span></div></header><main class="page-content"><div class="page-heading"><div><div class="eyebrow">AIRPORT OPERATIONS / ${A.page.toUpperCase()}</div><h1 class="page-title">${title[0]}</h1><p class="page-subtitle">${title[1]}</p></div><div class="heading-actions"><span class="date-label">${A.icon('clock')} 03 พ.ย. 2026</span>${headingAction()}</div></div><div id="page-body">${A.pages[A.page]?A.pages[A.page]():'<div class="empty">กำลังเตรียมหน้า</div>'}</div><footer class="page-footer"><span>AEROPS · Airport Operations Management System</span><span>Prototype · ข้อมูลจำลอง · UTC+7</span></footer></main></div></div>`;
+  };
+  A.init=()=>{
+    db.demoTime=A.demoTime;A.checkOperationalAlerts();
+    try{const stored=sessionStorage.getItem('aerops-role');if(roles[stored])A.role=stored;}catch(_){}
+    document.addEventListener('click',event=>{const el=event.target.closest('[data-action]');if(!el||el.disabled)return;event.preventDefault();const action=A.actions[el.dataset.action];if(action)action(el,event);});
+    document.addEventListener('change',event=>{const el=event.target.closest('[data-change]');if(el&&A.actions[el.dataset.change])A.actions[el.dataset.change](el,event);});
+    document.addEventListener('input',event=>{if(!event.target.matches('[data-table-search]'))return;const q=event.target.value.toLowerCase().trim();let visible=0;document.querySelectorAll('#page-body .searchable').forEach(row=>{row.hidden=!(row.dataset.searchtext||row.textContent).toLowerCase().includes(q);if(!row.hidden)visible++;});let e=document.getElementById('search-empty');if(!e){e=document.createElement('p');e.id='search-empty';e.className='empty';e.textContent='ไม่พบข้อมูลที่ตรงกับคำค้น';document.querySelector('#page-body').appendChild(e);}e.hidden=visible>0;});
+    document.getElementById('modal').addEventListener('click',e=>{if(e.target===e.currentTarget){const rect=e.currentTarget.getBoundingClientRect();if(e.clientX<rect.left||e.clientX>rect.right||e.clientY<rect.top||e.clientY>rect.bottom)e.currentTarget.close();}});
+    try{if(sessionStorage.getItem('aerops-loggedout')==='1')return renderLogin();}catch(_){}A.render();
+  };
+})();
+</script><script>/* Airport Operations Management — presentation modules. All records are fictional. */
+(() => {
+  'use strict';
+  const A = window.AO;
+  const h = value => A.h(value == null ? '' : String(value));
+  const ui = {personnelTab:'staff', reportStart:'2026-11-03', reportEnd:'2026-11-03', auditAction:'all',auditStart:'',auditEnd:''};
+  let bagPassengerCandidates=[];
+  const bagPassengerOptions=(passengers,selected='')=>`<option value="">${passengers.length?'เลือกผู้โดยสาร':'ไม่พบผู้โดยสารที่ตรงกับคำค้น'}</option>`+passengers.map(p=>`<option value="${h(p.id)}" ${p.id===selected?'selected':''}>${h(p.name)} · ${h(flightLabel(p.flightId))} · ${h(p.seat)}</option>`).join('');
+  document.addEventListener?.('input',event=>{
+    if(!event.target.matches?.('[data-bag-passenger-search]'))return;
+    const select=document.getElementById('bag-passenger-select');if(!select)return;
+    const query=event.target.value.trim().toLowerCase(),selected=select.value;
+    const matches=bagPassengerCandidates.filter(p=>`${p.name} ${p.passport} ${flightLabel(p.flightId)}`.toLowerCase().includes(query));
+    select.innerHTML=bagPassengerOptions(matches,matches.some(p=>p.id===selected)?selected:'');
+  });
+  const ready = status => ['พร้อมใช้งาน','ว่าง','Available','available','Ready','ready','พร้อมปฏิบัติงาน'].includes(status);
+  const pending = status => ['รอดำเนินการ','Pending','pending','Scheduled','scheduled'].includes(status);
+  const running = status => ['กำลังดำเนินการ','In progress','In Progress','in_progress'].includes(status);
+  const done = status => ['เสร็จสิ้น','Completed','completed'].includes(status);
+  const cancelled = status => ['ยกเลิก','Cancelled','cancelled'].includes(status);
+  const checked = status => ['เช็กอินแล้ว','Checked-in','Checked in','checked-in','checked_in','Checked In','Boarded','ขึ้นเครื่องแล้ว'].includes(status);
+  const bagReady = status => ['เช็กอินแล้ว','Checked-in','Checked in','checked-in','checked_in','Checked In'].includes(status);
+  const busy = status => ['กำลังใช้งาน','ไม่ว่าง','Busy','busy','Assigned','assigned','ปฏิบัติงาน','On duty','In use'].includes(status);
+  const can = permission => A.allowed(permission);
+  const need = permission => {if(can(permission)) return true; A.toast('บทบาทนี้ไม่มีสิทธิ์แก้ไขข้อมูลส่วนนี้'); return false;};
+  const flightLabel = id => {const f=A.flight(id); return f ? (f.no||f.number||id) : id;};
+  const flightOptions = selected => A.db.flights.filter(f=>!cancelled(f.status)).map(f=>`<option value="${h(f.id)}" ${f.id===selected?'selected':''}>${h(f.no||f.number||f.id)} · ${h(f.from)} → ${h(f.to)}</option>`).join('');
+  const optionList = (values,selected) => values.map(v=>`<option ${v===selected?'selected':''} value="${h(v)}">${h(v)}</option>`).join('');
+  const field = (label,inner) => `<label class="field"><span>${label}</span>${inner}</label>`;
+  const inp = (name,value='',type='text',attrs='') => `<input type="${type}" name="${name}" value="${h(value)}" ${attrs}>`;
+  const status = value => A.badge(value||'—');
+  const search = placeholder => `<input class="search-input" data-table-search placeholder="${h(placeholder)}" aria-label="${h(placeholder)}">`;
+  const btn = (action,label,id='',cls='btn btn-ghost') => `<button class="${cls}" data-action="${action}" data-id="${h(id)}" type="button">${label}</button>`;
+  const empty = text => `<div class="empty">${h(text)}</div>`;
+  const table = (head,rows) => `<div class="table-wrap"><table class="data-table"><thead><tr>${head.map(t=>`<th>${t}</th>`).join('')}</tr></thead><tbody>${rows||`<tr><td colspan="${head.length}">${empty('ยังไม่มีข้อมูลในรายการนี้')}</td></tr>`}</tbody></table></div>`;
+  const row = (text,cells) => `<tr class="searchable" data-searchtext="${h(text)}">${cells.map(c=>`<td>${c}</td>`).join('')}</tr>`;
+  const confirmRemove = (kind,item,onDelete) => A.modal(`ยืนยันลบ${kind}`,`<div class="warning-box">ลบ <strong>${h(item)}</strong> ออกจากข้อมูลสาธิต? การกระทำนี้จะถูกบันทึกในประวัติการใช้งาน</div>`,()=>{onDelete(); A.save();});
+  const titleCase = value => ({passenger:'Passenger Service Agent',baggage:'Baggage Staff',supervisor:'Ground Handling Supervisor',ground:'Ground Staff',operations:'Operations Officer',gate:'Gate Agent',ramp:'Ramp Agent',admin:'Admin'})[value]||value;
+
+  A.pages.passengers = () => {
+    const rows=A.db.passengers.map(p=>row(`${p.name} ${p.passport} ${p.seat} ${flightLabel(p.flightId)} ${p.status}`,[`<strong>${h(p.name)}</strong><div class="muted mono">${h(p.id)}</div>`,`<span class="mono">${h(p.passport)}</span>`,`<strong class="mono">${h(flightLabel(p.flightId))}</strong>`,`<span class="mono">${h(p.seat)}</span>`,status(p.status),`<div class="row-actions">${can('passengers')?btn('passengerStatus','เปลี่ยนสถานะ',p.id)+btn('passengerEdit','แก้ไข',p.id)+btn('passengerDelete','ลบ',p.id,'btn btn-ghost danger-text'):''}</div>`])).join('');
+    return `<div class="stat-grid"><div class="stat-card"><span class="muted">ผู้โดยสารทั้งหมด</span><strong>${A.db.passengers.length}</strong><small>ข้อมูลผู้โดยสารตัวอย่าง</small></div><div class="stat-card"><span class="muted">เช็กอิน / ขึ้นเครื่องแล้ว</span><strong>${A.db.passengers.filter(p=>checked(p.status)).length}</strong><small>จำนวนผู้โดยสารที่ผ่านการเช็กอิน</small></div><div class="stat-card"><span class="muted">สัมภาระที่เชื่อมโยง</span><strong>${A.db.bags.length}</strong><small>ติดตามแยกตาม Baggage Tag</small></div></div><section class="panel"><div class="panel-head"><div><h2>รายชื่อผู้โดยสาร</h2><p>จัดการข้อมูลและสถานะผู้โดยสารของแต่ละเที่ยวบิน</p></div>${can('passengers')?btn('passengerAdd','+ เพิ่มผู้โดยสาร','','btn btn-primary'):''}</div><div class="toolbar">${search('ค้นหาชื่อ หนังสือเดินทาง หรือเที่ยวบิน')}<span class="helper">ข้อมูลทั้งหมดเป็นข้อมูลสมมติ</span></div>${table(['ผู้โดยสาร','หนังสือเดินทาง','เที่ยวบิน','ที่นั่ง','สถานะ','จัดการ'],rows)}</section>`;
+  };
+  function passengerForm(id) {
+    if(!need('passengers')) return;
+    const p=A.db.passengers.find(p=>p.id===id)||{};
+    A.modal(id?'แก้ไขข้อมูลผู้โดยสาร':'เพิ่มผู้โดยสาร',`<div class="form-grid">${field('ชื่อ–นามสกุล',inp('name',p.name,'text','required maxlength="100"'))}${field('เลขหนังสือเดินทาง',inp('passport',p.passport,'text','required maxlength="20"'))}${field('เที่ยวบิน',`<select name="flightId" required>${flightOptions(p.flightId)}</select>`)}${field('ที่นั่ง',inp('seat',p.seat,'text','required maxlength="5" placeholder="เช่น 12A"'))}</div><p class="helper">ไม่อนุญาตเลขหนังสือเดินทางหรือที่นั่งซ้ำในเที่ยวบินเดียวกัน</p>`,d=>{
+      const flight=A.flight(d.flightId); d.name=d.name.trim(); d.passport=d.passport.trim().toUpperCase(); d.seat=d.seat.trim().toUpperCase();
+      if(!d.name||!d.passport) return A.formError('กรุณากรอกชื่อและเลขหนังสือเดินทาง'),false;
+      if(!/^([1-9]\d?)[A-K]$/.test(d.seat)) return A.formError('ระบุที่นั่งเป็นตัวเลข 1–99 ตามด้วย A–K เช่น 12A'),false;
+      if(!flight||cancelled(flight.status)) return A.formError('เที่ยวบินนี้ไม่พร้อมรับผู้โดยสาร'),false;
+      if(A.db.passengers.some(x=>x.id!==id&&x.flightId===d.flightId&&(x.passport===d.passport||x.seat===d.seat))) return A.formError('หนังสือเดินทางหรือที่นั่งซ้ำกับผู้โดยสารในเที่ยวบินเดียวกัน'),false;
+      if(id&&p.flightId!==d.flightId&&A.db.bags.some(b=>b.passengerId===id)) return A.formError('ผู้โดยสารมีสัมภาระเชื่อมโยงแล้ว กรุณาจัดการสัมภาระก่อนย้ายเที่ยวบิน'),false;
+      const before=JSON.stringify(p); if(id)Object.assign(p,d);else A.db.passengers.push({...d,id:A.id('P'),status:'Booked'});
+      A.log(id?'แก้ไขผู้โดยสาร':'เพิ่มผู้โดยสาร',id||d.passport,`${id?'ก่อน: '+before+' → ':''}หลัง: ${JSON.stringify(d)}`); A.save(); A.toast('บันทึกข้อมูลผู้โดยสารแล้ว');
+    });
+  }
+  A.actions.passengerAdd=()=>passengerForm(); A.actions.passengerEdit=b=>passengerForm(b.dataset.id);
+  A.actions.passengerStatus=b=>{if(!need('passengers'))return;const p=A.db.passengers.find(p=>p.id===b.dataset.id);A.modal('อัปเดตสถานะผู้โดยสาร',`<p><strong>${h(p.name)}</strong> · ${h(flightLabel(p.flightId))} · ${h(p.seat)}</p>${field('สถานะ',`<select name="status">${optionList(['Booked','Checked-in','Boarded','No-show'],p.status)}</select>`)}`,d=>{if(cancelled(A.flight(p.flightId)?.status))return A.formError('ไม่สามารถเปลี่ยนสถานะในเที่ยวบินที่ยกเลิก'),false;const before=p.status;p.status=d.status;A.log('เปลี่ยนสถานะผู้โดยสาร',p.id,`${before} → ${p.status}`);A.save();A.toast('อัปเดตสถานะผู้โดยสารแล้ว');});};
+  A.actions.passengerDelete=b=>{if(!need('passengers'))return;const p=A.db.passengers.find(p=>p.id===b.dataset.id);if(A.db.bags.some(x=>x.passengerId===p.id))return A.toast('ไม่สามารถลบผู้โดยสารที่มีสัมภาระเชื่อมโยงอยู่');confirmRemove('ผู้โดยสาร',p.name,()=>{A.db.passengers=A.db.passengers.filter(x=>x.id!==p.id);A.log('ลบผู้โดยสาร',p.id,JSON.stringify(p));});};
+
+  A.pages.baggage = () => {
+    const rows=A.db.bags.map(b=>{const p=A.db.passengers.find(p=>p.id===b.passengerId);return row(`${b.tag||b.id} ${p?.name} ${flightLabel(b.flightId)} ${b.status}`,[`<strong class="mono">${h(b.tag||b.id)}</strong>`,`<strong>${h(p?.name||'—')}</strong><div class="muted">${h(b.passengerId)}</div>`,`<span class="mono">${h(flightLabel(b.flightId))}</span>`,`${h(b.weight)} kg`,status(b.status),`<div class="row-actions">${btn('bagHistory','ติดตาม',b.id)}${can('baggage')?btn('bagStatus','อัปเดต',b.id)+btn('bagPrint','พิมพ์ Tag',b.id):''}</div>`]);}).join('');
+    return `<div class="stat-grid"><div class="stat-card"><span class="muted">สัมภาระลงทะเบียน</span><strong>${A.db.bags.length}</strong><small>1 Tag ต่อสัมภาระ 1 ชิ้น</small></div><div class="stat-card"><span class="muted">โหลดขึ้นเครื่องแล้ว</span><strong>${A.db.bags.filter(b=>['Loaded','On board','โหลดขึ้นเครื่องแล้ว'].includes(b.status)).length}</strong><small>เชื่อมโยงผู้โดยสารและเที่ยวบิน</small></div><div class="stat-card"><span class="muted">ส่งมอบแล้ว</span><strong>${A.db.bags.filter(b=>['Delivered','ส่งมอบแล้ว'].includes(b.status)).length}</strong><small>มีเวลาในประวัติทุกการเปลี่ยนสถานะ</small></div></div><section class="panel"><div class="panel-head"><div><h2>ติดตามสัมภาระ</h2><p>ลงทะเบียน ออก Baggage Tag และตรวจสอบลำดับการเคลื่อนย้าย</p></div>${can('baggage')?btn('bagAdd','+ ลงทะเบียนสัมภาระ','','btn btn-primary'):''}</div><div class="toolbar">${search('ค้นหา Baggage Tag ชื่อผู้โดยสาร หรือเที่ยวบิน')}</div>${table(['Baggage Tag','ผู้โดยสาร','เที่ยวบิน','น้ำหนัก','สถานะ','จัดการ'],rows)}</section>`;
+  };
+  A.actions.bagAdd=()=>{
+    if(!need('baggage'))return;
+    const passengers=A.db.passengers.filter(p=>bagReady(p.status)&&!cancelled(A.flight(p.flightId)?.status));bagPassengerCandidates=passengers;
+    A.modal('ลงทะเบียนสัมภาระ',`<div class="helper">ลงทะเบียนได้เมื่อผู้โดยสารเช็กอินแล้ว และเที่ยวบินยังไม่ถูกยกเลิก</div><div class="form-grid">${field('ค้นหาผู้โดยสารที่เช็กอินแล้ว',`<input type="search" data-bag-passenger-search placeholder="ชื่อ หนังสือเดินทาง หรือเที่ยวบิน" autocomplete="off">`)}${field('ผู้โดยสารที่เช็กอินแล้ว',`<select id="bag-passenger-select" name="passengerId" required>${bagPassengerOptions(passengers)}</select>`)}${field('ประเภทสัมภาระ',`<select name="type">${optionList(['Checked baggage','Special baggage','Fragile'],'Checked baggage')}</select>`)}${field('จำนวนชิ้น',inp('pieces',1,'number','required min="1" max="5"'))}${field('น้ำหนักต่อชิ้น (กก.)',inp('weight',20,'number','required min="0.1" max="32" step="0.1"'))}</div><p class="helper">ระบบสร้าง Tag ที่ไม่ซ้ำกันให้แต่ละชิ้นโดยอัตโนมัติ</p>`,d=>{
+      const p=A.db.passengers.find(p=>p.id===d.passengerId),pieces=Number(d.pieces),weight=Number(d.weight);
+      if(!p||!bagReady(p.status)||cancelled(A.flight(p.flightId)?.status))return A.formError('กรุณาเลือกผู้โดยสารที่เช็กอินแล้วในเที่ยวบินที่เปิดให้บริการ'),false;
+      if(!Number.isInteger(pieces)||pieces<1||pieces>5||!(weight>0&&weight<=32))return A.formError('จำนวนชิ้นต้องเป็น 1–5 และน้ำหนักต่อชิ้นไม่เกิน 32 กก.'),false;
+      const tags=[]; for(let i=0;i<pieces;i++){const id=A.id('BG');A.db.bags.push({id,passengerId:p.id,flightId:p.flightId,weight,type:['Checked baggage','Special baggage','Fragile'].includes(d.type)?d.type:'Checked baggage',status:'Check-in',history:[{status:'Check-in',time:A.now()}]});tags.push(id);}
+      A.log('ลงทะเบียนสัมภาระ',p.id,`${pieces} ชิ้น / ${weight} kg ต่อชิ้น / ${tags.join(', ')}`);A.save();A.toast(`ลงทะเบียนแล้ว ${pieces} ชิ้น พร้อมพิมพ์ Baggage Tag`);
+    });
+  };
+  A.actions.bagStatus=b=>{if(!need('baggage'))return;const bag=A.db.bags.find(x=>x.id===b.dataset.id);A.modal('อัปเดตสถานะสัมภาระ',`<p class="mono"><strong>${h(bag.tag||bag.id)}</strong> · ${h(flightLabel(bag.flightId))}</p>${field('สถานะใหม่',`<select name="status">${optionList(['Check-in','Screening','Loaded','On carousel','Delivered','Exception'],bag.status)}</select>`)}${field('หมายเหตุ',`<textarea name="note" rows="3" maxlength="300" placeholder="เช่น ตรวจพบสัมภาระที่สายพาน 03"></textarea>`)}`,d=>{const before=bag.status;bag.status=d.status;bag.history=bag.history||[];bag.history.push({status:d.status,time:A.now(),note:d.note.trim()});A.log('อัปเดตสัมภาระ',bag.tag||bag.id,`${before} → ${bag.status}${d.note?' / '+d.note:''}`);if(d.status==='Exception')A.notice('สัมภาระต้องตรวจสอบ',`${bag.tag||bag.id} · ${flightLabel(bag.flightId)} · ${d.note||'กรุณาตรวจสอบกับเจ้าหน้าที่สัมภาระ'}`,'warning',bag.flightId);A.save();A.toast('บันทึกสถานะสัมภาระแล้ว');});};
+  A.actions.bagHistory=b=>{const bag=A.db.bags.find(x=>x.id===b.dataset.id);const p=A.db.passengers.find(p=>p.id===bag.passengerId);A.modal('ประวัติการติดตามสัมภาระ',`<div class="detail-grid"><div class="info-item"><span>Tag</span><strong class="mono">${h(bag.tag||bag.id)}</strong></div><div class="info-item"><span>เที่ยวบิน</span><strong>${h(flightLabel(bag.flightId))}</strong></div><div class="info-item"><span>ผู้โดยสาร</span><strong>${h(p?.name||'—')}</strong></div><div class="info-item"><span>น้ำหนัก</span><strong>${h(bag.weight)} kg</strong></div></div><div class="timeline">${(bag.history||[]).map(x=>`<div class="timeline-item"><strong>${h(x.status)}</strong><p class="muted">${h(x.time||x.at)}${x.note?' · '+h(x.note):''}</p></div>`).join('')||empty('ยังไม่มีประวัติสถานะ')}</div>`);};
+  A.actions.bagPrint=b=>{
+    if(!need('baggage'))return;const bag=A.db.bags.find(x=>x.id===b.dataset.id),p=A.db.passengers.find(p=>p.id===bag.passengerId);
+    const tag=`<div class="bag-tag"><div class="muted">AEROPS · DEMO BAGGAGE TAG</div><h2 class="mono">${h(flightLabel(bag.flightId))}</h2><strong>${h(p?.name)}</strong><div class="tag-barcode" aria-hidden="true">▌▐▐▌▌▐▌▐▐▌▌▌▐▌▐▐▌▌▐▌▐▐▌</div><strong class="mono">${h(bag.tag||bag.id)}</strong><p>${h(bag.weight)} kg · ${h(p?.seat)}</p><small>ข้อมูลตัวอย่างสำหรับนำเสนอ · แถบจำลอง</small></div>`;
+    A.modal('Baggage Tag · พิมพ์ซ้ำใช้รหัสเดิม',`${tag}<p class="helper">กดพิมพ์เพื่อเปิดหน้าต่างพิมพ์หรือบันทึกเป็น PDF โดยใช้ Tag เดิม</p>`,()=>{
+      A.log('พิมพ์ Baggage Tag',bag.tag||bag.id,'พิมพ์สำเนาโดยคงรหัส Tag เดิม');A.save();
+      document.getElementById('tag-print-area')?.remove();const region=document.createElement('section');region.id='tag-print-area';region.innerHTML=tag;region.style.display='none';document.body.appendChild(region);
+      let style=document.getElementById('tag-print-style');if(!style){style=document.createElement('style');style.id='tag-print-style';style.textContent='@media print{body[data-print-tag]>*:not(#tag-print-area){display:none!important}body[data-print-tag] #tag-print-area{display:block!important;position:static!important;margin:25mm!important;max-width:100mm!important}body[data-print-tag] #tag-print-area .bag-tag{border:2px solid #111;padding:20px;text-align:center}body[data-print-tag] #tag-print-area .tag-barcode{font-size:32px;letter-spacing:1px;overflow:hidden}}';document.head.appendChild(style);}
+      document.body.dataset.printTag='1';const cleanup=()=>{delete document.body.dataset.printTag;region.remove();window.removeEventListener('afterprint',cleanup);};window.addEventListener('afterprint',cleanup);window.print();
+    },{submitLabel:'พิมพ์ / บันทึก PDF'});
+  };
+
+  A.pages.personnel = () => {
+    const staffTab=ui.personnelTab==='staff',records=staffTab?A.db.staff:A.db.equipment;
+    const rows=records.map(x=>row(`${x.id} ${x.name} ${(x.skills||[]).join(' ')} ${x.type||''} ${x.status}`,[`<strong class="mono">${h(x.id)}</strong>`,`<strong>${h(x.name)}</strong>${x.position?`<div class="muted">${h(x.position)}</div>`:''}`,h(staffTab?(x.skills||[]).join(', '):x.type),status(x.status),`<div class="row-actions">${can('personnel')?btn('personEdit','แก้ไข',x.id)+btn('personDelete','ลบ',x.id,'btn btn-ghost danger-text'):''}</div>`])).join('');
+    return `<div class="stat-grid"><div class="stat-card"><span class="muted">บุคลากรพร้อมปฏิบัติงาน</span><strong>${A.db.staff.filter(x=>ready(x.status)).length}<small> / ${A.db.staff.length}</small></strong><small>กรองก่อนมอบหมายตามทักษะ</small></div><div class="stat-card"><span class="muted">อุปกรณ์พร้อมใช้งาน</span><strong>${A.db.equipment.filter(x=>ready(x.status)).length}<small> / ${A.db.equipment.length}</small></strong><small>ตรวจสอบสถานะก่อนจัดสรร</small></div><div class="stat-card"><span class="muted">งานที่กำลังดำเนินการ</span><strong>${A.db.tasks.filter(x=>running(x.status)).length}</strong><small>อัปเดตโดยเจ้าหน้าที่ผู้รับมอบหมาย</small></div></div><section class="panel"><div class="panel-head"><div><h2>บุคลากรและอุปกรณ์ภาคพื้น</h2><p>ดูความพร้อมและจัดการข้อมูลสำหรับงานบริการภาคพื้น</p></div>${can('personnel')?btn('personAdd',staffTab?'+ เพิ่มบุคลากร':'+ เพิ่มอุปกรณ์','','btn btn-primary'):''}</div><div class="toolbar"><div class="subtabs">${btn('personTab','บุคลากร','staff',`btn ${staffTab?'active':''}`)}${btn('personTab','อุปกรณ์','equipment',`btn ${!staffTab?'active':''}`)}</div>${search(staffTab?'ค้นหารหัส ชื่อ หรือทักษะ':'ค้นหารหัส ชื่อ หรือประเภทอุปกรณ์')}</div>${table(['รหัส',staffTab?'ชื่อบุคลากร':'อุปกรณ์',staffTab?'ทักษะ / ตำแหน่ง':'ประเภท','สถานะ','จัดการ'],rows)}</section>`;
+  };
+  A.actions.personTab=b=>{ui.personnelTab=b.dataset.id;A.render();};
+  function personnelForm(id){
+    if(!need('personnel'))return;const staffTab=ui.personnelTab==='staff',list=staffTab?A.db.staff:A.db.equipment,x=list.find(x=>x.id===id)||{};
+    const current=(staffTab?x.skills?.[0]:x.type)||'',values=staffTab?['Baggage loading','Cleaning','Refueling','Pushback','Catering']:['Belt loader','Fuel truck','Pushback tug','Cleaning cart','Catering truck'];
+    if(current&&!values.includes(current))values.unshift(current);
+    A.modal((id?'แก้ไข':'เพิ่ม')+(staffTab?'บุคลากรภาคพื้น':'อุปกรณ์ภาคพื้น'),`<div class="form-grid">${field(staffTab?'ชื่อ–นามสกุล':'ชื่ออุปกรณ์',inp('name',x.name,'text','required maxlength="100"'))}${staffTab?field('ตำแหน่ง',inp('position',x.position||'Ramp team','text','required maxlength="80"')):''}${field(staffTab?'ทักษะหลัก':'ประเภท',`<select name="${staffTab?'skill':'type'}">${optionList(values,current)}</select>`)}${staffTab?field('ทักษะเพิ่มเติม (คั่นด้วยเครื่องหมาย ,)',inp('extraSkills',(x.skills||[]).slice(1).join(', '),'text','maxlength="120"')):''}${field('สถานะ',`<select name="status">${optionList(['Available',staffTab?'On duty':'In use',staffTab?'Off duty':'Maintenance'],x.status||'Available')}</select>`)}</div>`,d=>{d.name=d.name.trim();if(!d.name)return A.formError('กรุณาระบุชื่อ'),false;const active=A.db.tasks.some(t=>(!done(t.status)&&!cancelled(t.status))&&(staffTab?t.staffId===id:t.equipmentId===id));if(active&&d.status!==(staffTab?'On duty':'In use'))return A.formError('รายการนี้มีงานที่ยังไม่เสร็จ ไม่สามารถเปลี่ยนสถานะเป็นพร้อมใช้งานหรือพักงานได้'),false;if(staffTab){d.skills=[...new Set([d.skill,...d.extraSkills.split(',').map(s=>s.trim()).filter(Boolean)])];if(A.db.tasks.some(t=>t.staffId===id&&!done(t.status)&&!cancelled(t.status)&&!skillMatch({skills:d.skills},t)))return A.formError('ทักษะใหม่ไม่ตรงกับงานที่ได้รับมอบหมาย กรุณามอบหมายงานให้บุคลากรอื่นก่อน'),false;delete d.skill;delete d.extraSkills;}const before=JSON.stringify(x);if(id)Object.assign(x,d);else list.push({...d,id:A.id(staffTab?'S':'E')});A.log(id?'แก้ไข'+(staffTab?'บุคลากร':'อุปกรณ์'):'เพิ่ม'+(staffTab?'บุคลากร':'อุปกรณ์'),id||d.name,`${id?'ก่อน: '+before+' → ':''}หลัง: ${JSON.stringify(d)}`);A.save();A.toast('บันทึกข้อมูลแล้ว');});
+  }
+  A.actions.personAdd=()=>personnelForm();A.actions.personEdit=b=>personnelForm(b.dataset.id);
+  A.actions.personDelete=b=>{if(!need('personnel'))return;const isStaff=ui.personnelTab==='staff',list=isStaff?A.db.staff:A.db.equipment,x=list.find(x=>x.id===b.dataset.id);if(A.db.tasks.some(t=>isStaff?t.staffId===x.id:t.equipmentId===x.id))return A.toast('ไม่สามารถลบรายการที่เชื่อมโยงกับงานบริการภาคพื้น');confirmRemove(isStaff?'บุคลากร':'อุปกรณ์',x.name,()=>{if(isStaff)A.db.staff=A.db.staff.filter(a=>a.id!==x.id);else A.db.equipment=A.db.equipment.filter(a=>a.id!==x.id);A.log(isStaff?'ลบบุคลากร':'ลบอุปกรณ์',x.id,JSON.stringify(x));});};
+
+  const ownStaff = () => A.staffId||'S01';
+  const manager = () => A.role==='presenter'||A.role==='supervisor';
+  const timeValue = (value,flightId) => {if(!value)return NaN;if(/^\d{2}:\d{2}$/.test(value)){const f=A.flight(flightId);return new Date(`${f?.date||'2026-11-03'}T${value}`).getTime();}return new Date(value).getTime();};
+  const taskStart=t=>t.start||t.plannedStart||t.startTime;
+  const taskEnd=t=>t.end||t.plannedEnd||t.endTime;
+  const taskOverlap=(a,b)=>timeValue(taskStart(a),a.flightId)<timeValue(taskEnd(b),b.flightId)&&timeValue(taskEnd(a),a.flightId)>timeValue(taskStart(b),b.flightId);
+  const clock=value=>value?String(value).replace('T',' ').slice(-5):'—';
+  const skillMatch = (s,t) => (s.skills||[]).some(value=>{const skill=String(value).toLowerCase(),type=String(t.type||'').toLowerCase();return skill&&type&&skill.trim()===type.trim();});
+  A.pages.ground=()=>{
+    const isManager=manager(),tasks=A.db.tasks.filter(t=>A.role!=='ground'||t.staffId===ownStaff());
+    const columns=[['รอดำเนินการ',tasks.filter(t=>pending(t.status))],['กำลังดำเนินการ',tasks.filter(t=>running(t.status))],['เสร็จสิ้น',tasks.filter(t=>done(t.status))]];if(tasks.some(t=>cancelled(t.status)))columns.push(['ยกเลิก',tasks.filter(t=>cancelled(t.status))]);
+    return `<div class="toolbar"><div class="helper">${A.role==='ground'?'งานที่ได้รับมอบหมายของคุณ · บันทึกเวลาเริ่มและเสร็จตามเวลาจำลองด้านบน':'สร้างงาน → มอบหมายบุคลากรและอุปกรณ์ → เจ้าหน้าที่เริ่มงาน → ติดตามผล'}</div>${isManager?btn('taskAdd','+ สร้างงานบริการ','','btn btn-primary'):''}</div><div class="task-board">${columns.map(([label,list])=>`<section class="task-column"><div class="section-heading"><h2>${label}</h2><span class="count-pill">${list.length}</span></div>${list.map(t=>{const s=A.db.staff.find(x=>x.id===t.staffId),e=A.db.equipment.find(x=>x.id===t.equipmentId);return `<article class="task-card"><div class="task-card-top"><strong class="mono">${h(flightLabel(t.flightId))}</strong>${status(t.status)}</div><h3>${h(t.type)}</h3><p class="muted mono">${h(clock(taskStart(t)))} – ${h(clock(taskEnd(t)))}</p><div class="task-meta"><span>ผู้รับผิดชอบ</span><strong>${h(s?.name||'ยังไม่มอบหมาย')}</strong></div><div class="task-meta"><span>อุปกรณ์</span><strong>${h(e?.name||'ยังไม่จัดสรร')}</strong></div>${t.actualStart?`<p class="helper">เริ่มจริง ${h(t.actualStart)}${t.actualEnd?' · เสร็จ '+h(t.actualEnd):''}</p>`:''}${t.note?`<p class="helper">${h(t.note)}</p>`:''}<div class="row-actions">${isManager&&pending(t.status)?btn('taskAssign','มอบหมาย',t.id,'btn btn-primary')+btn('taskEdit','แก้ไข',t.id)+btn('taskDelete','ลบ',t.id,'btn btn-ghost danger-text'):''}${(A.role==='presenter'||A.role==='ground')&&pending(t.status)&&t.staffId?btn('taskStart','เริ่มงาน',t.id,'btn btn-primary'):''}${(A.role==='presenter'||A.role==='ground')&&running(t.status)?btn('taskComplete','เสร็จสิ้น',t.id,'btn btn-primary'):''}</div></article>`;}).join('')||empty('ยังไม่มีงานในสถานะนี้')}</section>`).join('')}</div>`;
+  };
+  function taskForm(id){
+    if(!manager()||!need('ground'))return;const t=A.db.tasks.find(t=>t.id===id)||{};let types=['Baggage loading','Cleaning','Refueling','Pushback','Catering'];if(t.type&&!types.includes(t.type))types.unshift(t.type);
+    A.modal(id?'แก้ไขงานบริการภาคพื้น':'สร้างงานบริการภาคพื้น',`<div class="form-grid">${field('เที่ยวบิน',`<select name="flightId">${flightOptions(t.flightId)}</select>`)}${field('ประเภทงาน / ทักษะที่ต้องการ',`<select name="type">${optionList(types,t.type)}</select>`)}${field('เวลาเริ่มตามแผน',inp('start',clock(taskStart(t))==='—'?'10:30':clock(taskStart(t)),'time','required'))}${field('เวลาเสร็จตามแผน',inp('end',clock(taskEnd(t))==='—'?'11:00':clock(taskEnd(t)),'time','required'))}${field('หมายเหตุ',`<textarea name="note" rows="2" maxlength="300">${h(t.note)}</textarea>`)}</div>`,d=>{
+      if(cancelled(A.flight(d.flightId)?.status))return A.formError('ไม่สามารถสร้างงานให้เที่ยวบินที่ยกเลิก'),false;
+      if(d.start>=d.end)return A.formError('เวลาเสร็จต้องอยู่หลังเวลาเริ่มในวันเดียวกัน'),false;
+      if(id&&(t.staffId||t.equipmentId)&&(t.type!==d.type||t.start!==d.start||t.end!==d.end||t.flightId!==d.flightId))return A.formError('งานนี้มีการมอบหมายแล้ว กรุณาสร้างงานใหม่เมื่อต้องเปลี่ยนเที่ยวบิน เวลา หรือทักษะ'),false;
+      d.date=A.flight(d.flightId)?.date||'2026-11-03';const before=JSON.stringify(t);if(id)Object.assign(t,d);else A.db.tasks.push({...d,id:A.id('T'),status:'Pending',staffId:'',equipmentId:'',actualStart:'',actualEnd:''});A.log(id?'แก้ไขงานบริการ':'สร้างงานบริการ',id||d.flightId,`${id?'ก่อน: '+before+' → ':''}หลัง: ${JSON.stringify(d)}`);A.save();A.toast('บันทึกงานบริการแล้ว');
+    });
+  }
+  A.actions.taskAdd=()=>taskForm();A.actions.taskEdit=b=>taskForm(b.dataset.id);
+  A.actions.taskAssign=b=>{
+    if(!manager()||!need('ground'))return;const t=A.db.tasks.find(t=>t.id===b.dataset.id);if(!pending(t.status))return A.toast('มอบหมายได้เฉพาะงานที่รอดำเนินการ');
+    const staffReady=s=>ready(s.status)||s.id===t.staffId||(busy(s.status)&&A.db.tasks.some(x=>x.staffId===s.id&&!done(x.status)&&!cancelled(x.status)));
+    const equipReady=e=>ready(e.status)||e.id===t.equipmentId||(busy(e.status)&&A.db.tasks.some(x=>x.equipmentId===e.id&&!done(x.status)&&!cancelled(x.status)));
+    const eligibleStaff=A.db.staff.filter(s=>staffReady(s)&&skillMatch(s,t)&&!A.db.tasks.some(other=>other.id!==t.id&&!done(other.status)&&!cancelled(other.status)&&other.staffId===s.id&&taskOverlap(t,other)));
+    const eligibleEquip=A.db.equipment.filter(e=>equipReady(e)&&!A.db.tasks.some(other=>other.id!==t.id&&!done(other.status)&&!cancelled(other.status)&&other.equipmentId===e.id&&taskOverlap(t,other)));
+    A.modal('มอบหมายบุคลากรและอุปกรณ์',`<div class="warning-box"><strong>${h(flightLabel(t.flightId))} · ${h(t.type)}</strong><br>${h(taskStart(t))} – ${h(taskEnd(t))} · แสดงเฉพาะบุคลากรทักษะตรงกับงานและไม่มีเวลาทับซ้อน</div><div class="form-grid">${field('บุคลากรที่พร้อม',`<select name="staffId" required><option value="">เลือกบุคลากร</option>${eligibleStaff.map(s=>`<option value="${h(s.id)}" ${s.id===t.staffId?'selected':''}>${h(s.name)} · ${h((s.skills||[]).join(', '))}</option>`).join('')}</select>`)}${field('อุปกรณ์ที่พร้อม (เลือกภายหลังได้)',`<select name="equipmentId"><option value="">ไม่จัดสรรอุปกรณ์ในขั้นตอนนี้</option>${eligibleEquip.map(e=>`<option value="${h(e.id)}" ${e.id===t.equipmentId?'selected':''}>${h(e.name)} · ${h(e.type)}</option>`).join('')}</select>`)}</div><p class="helper">มอบหมายบุคลากรได้แม้อุปกรณ์ยังไม่พร้อม และกลับมาจัดสรรอุปกรณ์ภายหลัง ระบบตรวจสอบเวลาทับซ้อนอีกครั้งเมื่อยืนยัน</p>`,d=>{
+      if(!pending(t.status)||cancelled(A.flight(t.flightId)?.status))return A.formError('งานหรือเที่ยวบินนี้ถูกยกเลิก หรือไม่อยู่ในสถานะที่มอบหมายได้'),false;
+      const s=A.db.staff.find(s=>s.id===d.staffId),e=A.db.equipment.find(e=>e.id===d.equipmentId);
+      if(!s||!skillMatch(s,t)||!staffReady(s)||(d.equipmentId&&(!e||!equipReady(e))))return A.formError('บุคลากรหรืออุปกรณ์ไม่พร้อม หรือทักษะไม่ตรงกับงาน'),false;
+      const conflict=A.db.tasks.find(other=>other.id!==t.id&&!done(other.status)&&!cancelled(other.status)&&taskOverlap(t,other)&&(other.staffId===s.id||(e&&other.equipmentId===e.id)));
+      if(conflict)return A.formError(`เวลาทับซ้อนกับงาน ${conflict.id} ของเที่ยวบิน ${flightLabel(conflict.flightId)}`),false;
+      const oldStaff=t.staffId,oldEquipment=t.equipmentId,before=`staff ${oldStaff||'—'}, equipment ${oldEquipment||'—'}`;t.staffId=s.id;t.equipmentId=e?.id||'';s.status='On duty';if(e)e.status='In use';
+      if(oldStaff&&oldStaff!==s.id&&!A.db.tasks.some(x=>x.staffId===oldStaff&&!done(x.status)&&!cancelled(x.status))){const prev=A.db.staff.find(x=>x.id===oldStaff);if(prev)prev.status='Available';}
+      if(oldEquipment&&oldEquipment!==e?.id&&!A.db.tasks.some(x=>x.equipmentId===oldEquipment&&!done(x.status)&&!cancelled(x.status))){const prev=A.db.equipment.find(x=>x.id===oldEquipment);if(prev)prev.status='Available';}
+      A.log('มอบหมายงานบริการ',t.id,`${before} → staff ${s.id}, equipment ${e?.id||'ยังไม่จัดสรร'}`);A.notice('มอบหมายงานภาคพื้นแล้ว',`${s.name} · ${t.type} · ${flightLabel(t.flightId)}`,'info',t.flightId);A.save();A.toast('มอบหมายแล้ว งานแสดงใน My Tasks ของเจ้าหน้าที่');
+    });
+  };
+  A.actions.taskDelete=b=>{if(!manager()||!need('ground'))return;const t=A.db.tasks.find(t=>t.id===b.dataset.id);if(!pending(t.status))return A.toast('ลบได้เฉพาะงานที่รอดำเนินการ');confirmRemove('งานบริการ',`${flightLabel(t.flightId)} · ${t.type}`,()=>{A.db.tasks=A.db.tasks.filter(x=>x.id!==t.id);for(const [list,id] of [[A.db.staff,t.staffId],[A.db.equipment,t.equipmentId]]){const x=list.find(x=>x.id===id);if(x&&!A.db.tasks.some(a=>!done(a.status)&&!cancelled(a.status)&&(a.staffId===id||a.equipmentId===id)))x.status='Available';}A.log('ลบงานบริการ',t.id,JSON.stringify(t));});};
+  A.actions.taskStart=b=>{
+    if(!need('groundUpdate'))return;const t=A.db.tasks.find(t=>t.id===b.dataset.id);
+    if(!t)return A.toast('ไม่พบงานนี้');
+    if(A.role==='ground'&&t.staffId!==ownStaff())return A.toast('อัปเดตได้เฉพาะงานของคุณ');
+    if(!pending(t.status)||!t.staffId)return A.toast('งานต้องได้รับการมอบหมายบุคลากรก่อนเริ่ม');
+    const f=A.flight(t.flightId),s=A.db.staff.find(s=>s.id===t.staffId),e=A.db.equipment.find(e=>e.id===t.equipmentId);
+    if(!f||cancelled(f.status))return A.toast('ไม่สามารถเริ่มงานในเที่ยวบินที่ถูกยกเลิก');
+    if(!s||!skillMatch(s,t)||(!ready(s.status)&&!busy(s.status)))return A.toast('บุคลากรไม่พร้อมหรือทักษะไม่ตรงกับงาน กรุณาให้หัวหน้างานมอบหมายใหม่');
+    if(t.equipmentId&&(!e||(!ready(e.status)&&!busy(e.status))))return A.toast('อุปกรณ์ไม่พร้อมใช้งาน กรุณาจัดสรรใหม่');
+    const conflict=A.db.tasks.find(other=>other.id!==t.id&&running(other.status)&&(other.staffId===t.staffId||(t.equipmentId&&other.equipmentId===t.equipmentId)));
+    if(conflict)return A.toast('บุคลากรหรืออุปกรณ์กำลังทำงาน '+conflict.id+' กรุณาปิดงานเดิมก่อน');
+    t.status='In progress';t.actualStart=A.now();s.status='On duty';if(e)e.status='In use';
+    f.events?.push({time:t.actualStart.slice(11,16),title:'เริ่มงานภาคพื้น',detail:t.type+' · '+s.name});
+    A.log('เริ่มงานบริการ',t.id,`Pending → In progress / เวลาเริ่มจริง ${t.actualStart}`);A.save();A.toast('เริ่มงานแล้ว บันทึกเวลาเริ่มจริงเรียบร้อย');
+  };
+  A.actions.taskComplete=b=>{if(!need('groundUpdate'))return;const t=A.db.tasks.find(t=>t.id===b.dataset.id);if(A.role==='ground'&&t.staffId!==ownStaff())return A.toast('อัปเดตได้เฉพาะงานของคุณ');if(!running(t.status))return A.toast('ต้องเริ่มงานก่อนบันทึกเสร็จสิ้น');A.modal('บันทึกงานเสร็จสิ้น',`<p><strong>${h(t.type)}</strong> · ${h(flightLabel(t.flightId))}</p>${field('หมายเหตุการปฏิบัติงาน',`<textarea name="note" rows="3" maxlength="300" placeholder="รายละเอียดงานที่ดำเนินการแล้ว">${h(t.note)}</textarea>`)}`,d=>{if(!can('groundUpdate')||!A.db.tasks.includes(t)||!running(t.status)||cancelled(A.flight(t.flightId)?.status)||(A.role==='ground'&&t.staffId!==ownStaff()))return A.formError('งานนี้ไม่ได้อยู่ในสถานะกำลังดำเนินการ หรือไม่ได้มอบหมายให้คุณแล้ว'),false;const finishedAt=A.now();if(t.actualStart&&finishedAt.replace('T',' ')<t.actualStart.replace('T',' '))return A.formError('เวลาจำลองอยู่ก่อนเวลาเริ่มงาน กรุณาปรับเวลาจำลองด้านบนก่อนบันทึกเสร็จสิ้น'),false;t.status='Completed';t.actualEnd=finishedAt;t.note=d.note.trim();for(const [list,id]of [[A.db.staff,t.staffId],[A.db.equipment,t.equipmentId]]){const x=list.find(x=>x.id===id);if(x&&!A.db.tasks.some(other=>other.id!==t.id&&!done(other.status)&&!cancelled(other.status)&&(other.staffId===id||other.equipmentId===id)))x.status='Available';}A.flight(t.flightId)?.events?.push({time:t.actualEnd.slice(11,16),title:'งานภาคพื้นเสร็จสิ้น',detail:t.type+' · '+t.note});A.log('เสร็จสิ้นงานบริการ',t.id,`In progress → Completed / เวลาเสร็จจริง ${t.actualEnd} / ${t.note}`);A.notice('งานบริการภาคพื้นเสร็จสิ้น',`${flightLabel(t.flightId)} · ${t.type}`,'success',t.flightId);A.save();A.toast('บันทึกงานเสร็จสิ้นและคืนสถานะทรัพยากรแล้ว');});};
+
+  const reportFlights=()=>A.db.flights.filter(f=>{const date=f.date||'2026-11-03';return date>=ui.reportStart&&date<=ui.reportEnd;});
+  const delayMinutes=f=>{const minutes=v=>/^\d{2}:\d{2}$/.test(v||'')?Number(v.slice(0,2))*60+Number(v.slice(3,5)):NaN;return Math.max(0,minutes(f.actual)-minutes(f.scheduled));};
+  const isDelayed=f=>Number.isFinite(delayMinutes(f))&&delayMinutes(f)>0;
+  const reportMetrics=()=>{const flights=reportFlights(),operated=flights.filter(f=>!cancelled(f.status)),finalized=operated.filter(f=>f.actual&&['Departed','Arrived','Landed','ขึ้นบินแล้ว','ลงจอดแล้ว'].includes(f.status)),delayed=finalized.filter(isDelayed);return{flights,operated,delayed,finalized,otp:finalized.length?Math.round(finalized.filter(f=>!isDelayed(f)).length/finalized.length*100):null};};
+  A.pages.reports=()=>{
+    const m=reportMetrics(),bins=Array.from({length:12},(_,i)=>String(i*2).padStart(2,'0')).map(hour=>({hour,count:m.flights.filter(f=>{const time=f.time||f.scheduled||f.scheduledTime||'';const hh=Number(String(time).includes('T')?String(time).split('T')[1]?.slice(0,2):String(time).slice(0,2));return hh>=Number(hour)&&hh<Number(hour)+2;}).length})),peak=Math.max(1,...bins.map(x=>x.count)),ids=new Set(m.flights.map(f=>f.id)),alloc=A.db.allocations.filter(a=>ids.has(a.flightId));
+    return `<section class="panel report-toolbar"><div class="toolbar"><div class="date-range">${field('ตั้งแต่',`<input type="date" value="${h(ui.reportStart)}" data-change="reportStart">`)}${field('ถึง',`<input type="date" value="${h(ui.reportEnd)}" data-change="reportEnd">`)}</div><div class="row-actions">${btn('reportExcel','ส่งออก Excel','','btn btn-ghost')}${btn('reportPrint','พิมพ์ / บันทึก PDF','','btn btn-primary')}</div></div></section><div class="stat-grid"><div class="stat-card"><span class="muted">จำนวนเที่ยวบิน</span><strong>${m.flights.length}</strong><small>ตามช่วงวันที่เลือก</small></div><div class="stat-card"><span class="muted">เที่ยวบินล่าช้า</span><strong>${m.delayed.length}</strong><small>${m.finalized.length?Math.round(m.delayed.length/m.finalized.length*100):0}% ของเที่ยวบินที่มีเวลาจริงและเสร็จสิ้น</small></div><div class="stat-card"><span class="muted">ตรงต่อเวลา</span><strong>${m.otp===null?'—':m.otp+'%'}</strong><small>คำนวณจากเที่ยวบินที่เสร็จสิ้น ${m.finalized.length} เที่ยวบิน</small></div><div class="stat-card"><span class="muted">การจัดสรรทรัพยากร</span><strong>${alloc.length}</strong><small>รายการที่เชื่อมกับเที่ยวบินในช่วงนี้</small></div></div><div class="report-grid"><section class="panel"><div class="panel-head"><div><h2>ปริมาณเที่ยวบินตามช่วงเวลา</h2><p>จำนวนเที่ยวบินตามกำหนดการ · ช่วงละ 2 ชั่วโมง</p></div></div><div class="bar-chart">${bins.map(x=>`<div class="bar-column"><span class="bar-count">${x.count}</span><div class="bar" style="height:${Math.max(3,x.count/peak*150)}px"></div><small class="mono">${x.hour}:00</small></div>`).join('')}</div></section><section class="panel"><div class="panel-head"><div><h2>การใช้ทรัพยากร</h2><p>รายการจัดสรรตามชนิดทรัพยากร</p></div></div><div class="resource-summary">${[['Gate','gate'],['Parking stand','stand'],['Baggage carousel','carousel']].map(([label,type])=>{const count=alloc.filter(a=>String(a.kind||'').toLowerCase()===type).length;return`<div class="resource-summary-row"><span>${label}</span><strong>${count} รายการ</strong><div class="progress"><span style="width:${alloc.length?Math.round(count/alloc.length*100):0}%"></span></div></div>`;}).join('')}</div></section></div><section class="panel"><div class="panel-head"><div><h2>รายละเอียดเที่ยวบินในรายงาน</h2><p>${h(ui.reportStart)} ถึง ${h(ui.reportEnd)} · ข้อมูลสมมติจาก Prototype</p></div></div>${table(['เที่ยวบิน','เส้นทาง','กำหนดการ','สถานะ','ล่าช้า (นาที)'],m.flights.map(f=>row('',[`<strong class="mono">${h(f.no||f.number||f.id)}</strong>`,`${h(f.from)} → ${h(f.to)}`,h(f.time||f.scheduled||f.scheduledTime||'—'),status(f.status),h(Number.isFinite(delayMinutes(f))?delayMinutes(f):'—')])).join(''))}</section>`;
+  };
+  A.actions.reportStart=b=>{if(b.value>ui.reportEnd){A.toast('วันเริ่มต้องไม่อยู่หลังวันสิ้นสุด');b.value=ui.reportStart;return;}ui.reportStart=b.value;A.render();};
+  A.actions.reportEnd=b=>{if(b.value<ui.reportStart){A.toast('วันสิ้นสุดต้องไม่อยู่ก่อนวันเริ่ม');b.value=ui.reportEnd;return;}ui.reportEnd=b.value;A.render();};
+  A.actions.reportPrint=()=>{if(!need('reports'))return;window.print();A.log('พิมพ์รายงาน','REPORT',`${ui.reportStart} ถึง ${ui.reportEnd} / หน้าต่างพิมพ์หรือบันทึก PDF`);A.save();};
+  const download=(content,mime,name)=>{const u=URL.createObjectURL(new Blob([content],{type:mime})),a=document.createElement('a');a.href=u;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),1000);};
+  function excelWorkbook(rows){
+    const esc=value=>String(value??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    const column=n=>{let name='';for(n++;n;n=Math.floor((n-1)/26))name=String.fromCharCode(65+(n-1)%26)+name;return name;};
+    const files={
+      '[Content_Types].xml':'<?xml version="1.0" encoding="UTF-8"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/></Types>',
+      '_rels/.rels':'<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>',
+      'xl/workbook.xml':'<?xml version="1.0" encoding="UTF-8"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="Operations" sheetId="1" r:id="rId1"/></sheets></workbook>',
+      'xl/_rels/workbook.xml.rels':'<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/></Relationships>',
+      'xl/worksheets/sheet1.xml':`<?xml version="1.0" encoding="UTF-8"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><cols><col min="1" max="8" width="22" customWidth="1"/></cols><sheetData>${rows.map((r,i)=>`<row r="${i+1}">${r.map((v,j)=>typeof v==='number'?`<c r="${column(j)}${i+1}"><v>${v}</v></c>`:`<c r="${column(j)}${i+1}" t="inlineStr"><is><t xml:space="preserve">${esc(v)}</t></is></c>`).join('')}</row>`).join('')}</sheetData></worksheet>`
+    };
+    const encode=new TextEncoder(),parts=[],directory=[];let offset=0;
+    const crc32=bytes=>{let crc=0xffffffff;for(const b of bytes){crc^=b;for(let k=0;k<8;k++)crc=(crc>>>1)^((crc&1)?0xedb88320:0);}return(crc^0xffffffff)>>>0;};
+    for(const [path,xml] of Object.entries(files)){
+      const name=encode.encode(path),body=encode.encode(xml),crc=crc32(body),header=new Uint8Array(30+name.length),view=new DataView(header.buffer);view.setUint32(0,0x04034b50,true);view.setUint16(4,20,true);view.setUint16(6,0x800,true);view.setUint32(14,crc,true);view.setUint32(18,body.length,true);view.setUint32(22,body.length,true);view.setUint16(26,name.length,true);header.set(name,30);parts.push(header,body);
+      const central=new Uint8Array(46+name.length),cv=new DataView(central.buffer);cv.setUint32(0,0x02014b50,true);cv.setUint16(4,20,true);cv.setUint16(6,20,true);cv.setUint16(8,0x800,true);cv.setUint32(16,crc,true);cv.setUint32(20,body.length,true);cv.setUint32(24,body.length,true);cv.setUint16(28,name.length,true);cv.setUint32(42,offset,true);central.set(name,46);directory.push(central);offset+=header.length+body.length;
+    }
+    const directorySize=directory.reduce((n,x)=>n+x.length,0),end=new Uint8Array(22),ev=new DataView(end.buffer);ev.setUint32(0,0x06054b50,true);ev.setUint16(8,directory.length,true);ev.setUint16(10,directory.length,true);ev.setUint32(12,directorySize,true);ev.setUint32(16,offset,true);
+    return new Blob([...parts,...directory,end],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+  }
+  A.actions.reportExcel=()=>{
+    if(!need('reports'))return;const m=reportMetrics(),rows=[['AEROPS — รายงานข้อมูลสาธิต'],['ช่วงวันที่',ui.reportStart,ui.reportEnd],['เที่ยวบินทั้งหมด',m.flights.length],['เที่ยวบินล่าช้า (จากเวลาจริง)',m.delayed.length],['อัตราตรงต่อเวลา (เฉพาะเที่ยวบินเสร็จสิ้น)',m.otp===null?'ไม่มีข้อมูล':m.otp+'%'],[],['Flight ID','Flight No.','Date','Origin','Destination','Scheduled','Status','Delay (min)'],...m.flights.map(f=>[f.id,f.number,f.date||'2026-11-03',f.from,f.to,f.scheduled,f.status,Number.isFinite(delayMinutes(f))?delayMinutes(f):'—'])];
+    const flightIds=new Set(m.flights.map(f=>f.id)),allocations=A.db.allocations.filter(a=>flightIds.has(a.flightId));rows.push([],['Resource usage'],['Resource type','Allocations'],...['Gate','Stand','Carousel'].map(kind=>[kind,allocations.filter(a=>a.kind===kind).length]),[],['Allocation ID','Resource type','Resource','Flight No.','Date','Start','End'],...allocations.map(a=>[a.id,a.kind,a.resource,flightLabel(a.flightId),a.date,a.start,a.end]));
+    const url=URL.createObjectURL(excelWorkbook(rows)),link=document.createElement('a');link.href=url;link.download=`AEROPS-report-${ui.reportStart}.xlsx`;document.body.appendChild(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);A.log('ส่งออกรายงาน','REPORT',`${ui.reportStart} ถึง ${ui.reportEnd} / Excel .xlsx`);A.save();A.toast('ดาวน์โหลดรายงาน Excel แล้ว');
+  };
+
+  A.pages.users=()=>`<section class="panel"><div class="panel-head"><div><h2>บัญชีผู้ใช้และบทบาท</h2><p>จำลองการกำหนดสิทธิ์ตามหน้าที่ของเจ้าหน้าที่สนามบิน</p></div>${can('users')?btn('userAdd','+ เพิ่มบัญชีผู้ใช้','','btn btn-primary'):''}</div><div class="toolbar">${search('ค้นหาชื่อ ชื่อผู้ใช้ หรือบทบาท')}<span class="helper">บัญชีสาธิต · ไม่มีรหัสผ่านจริง</span></div>${table(['ผู้ใช้','ชื่อผู้ใช้','บทบาท','สถานะ','จัดการ'],A.db.users.map(u=>row(`${u.name} ${u.username} ${u.role} ${u.status}`,[`<strong>${h(u.name)}</strong><div class="muted mono">${h(u.id)}</div>`,`<span class="mono">${h(u.username)}</span>`,h(titleCase(u.role)),status(u.status),`<div class="row-actions">${can('users')?btn('userEdit','แก้ไข',u.id)+btn('userDelete','ลบ',u.id,'btn btn-ghost danger-text'):''}</div>`])).join(''))}</section><div class="helper" style="margin-top:16px">การสลับบทบาทด้านบนใช้เพื่อสาธิตสิทธิ์ใน Prototype การยืนยันตัวตนและสิทธิ์ฝั่งเซิร์ฟเวอร์ยังไม่ใช่ส่วนที่ใช้งานจริง</div>`;
+  function userForm(id){if(!need('users'))return;const u=A.db.users.find(x=>x.id===id)||{},roles=['admin','operations','gate','ramp','passenger','baggage','supervisor','ground'];A.modal(id?'แก้ไขบัญชีผู้ใช้':'เพิ่มบัญชีผู้ใช้',`<div class="form-grid">${field('ชื่อ–นามสกุล',inp('name',u.name,'text','required maxlength="100"'))}${field('ชื่อผู้ใช้',inp('username',u.username,'text','required pattern="[A-Za-z0-9._-]{3,30}" minlength="3" maxlength="30"'))}${field('บทบาท',`<select name="role">${roles.map(r=>`<option value="${r}" ${r===u.role?'selected':''}>${titleCase(r)}</option>`).join('')}</select>`)}${field('สถานะ',`<select name="status">${optionList(['Active','Inactive'],u.status||'Active')}</select>`)}</div><p class="helper">บัญชีใช้เพื่อแสดงโครงสร้างสิทธิ์ในข้อมูลสาธิต ไม่มีการจัดเก็บรหัสผ่าน</p>`,d=>{d.name=d.name.trim();d.username=d.username.trim();if(!d.name||!/^[A-Za-z0-9._-]{3,30}$/.test(d.username))return A.formError('ระบุชื่อและชื่อผู้ใช้ 3–30 ตัวอักษร ใช้ภาษาอังกฤษ ตัวเลข . _ -'),false;if(A.db.users.some(x=>x.id!==id&&x.username.toLowerCase()===d.username.toLowerCase()))return A.formError('ชื่อผู้ใช้นี้มีอยู่แล้ว'),false;if(u.role==='admin'&&(d.role!=='admin'||d.status!=='Active')&&!A.db.users.some(x=>x.id!==id&&x.role==='admin'&&x.status==='Active'))return A.formError('ต้องมีผู้ดูแลระบบที่เปิดใช้งานอย่างน้อย 1 บัญชี'),false;const before=JSON.stringify(u);if(id)Object.assign(u,d);else A.db.users.push({...d,id:A.id('U')});A.log(id?'แก้ไขบัญชีผู้ใช้':'เพิ่มบัญชีผู้ใช้',id||d.username,`${id?'ก่อน: '+before+' → ':''}หลัง: ${JSON.stringify(d)}`);A.save();A.toast('บันทึกบัญชีผู้ใช้แล้ว');});}
+  A.actions.userAdd=()=>userForm();A.actions.userEdit=b=>userForm(b.dataset.id);
+  A.actions.userDelete=b=>{if(!need('users'))return;const u=A.db.users.find(x=>x.id===b.dataset.id);if(u.role==='admin'&&!A.db.users.some(x=>x.id!==u.id&&x.role==='admin'&&x.status==='Active'))return A.toast('ไม่สามารถลบบัญชีผู้ดูแลระบบคนสุดท้าย');confirmRemove('บัญชีผู้ใช้',u.username,()=>{A.db.users=A.db.users.filter(x=>x.id!==u.id);A.log('ลบบัญชีผู้ใช้',u.id,JSON.stringify(u));});};
+
+  A.pages.audit=()=>{
+    const actions=[...new Set(A.db.audit.map(x=>x.action))],records=[...A.db.audit].sort((a,b)=>String(b.time||b.at).localeCompare(String(a.time||a.at))).filter(x=>{const date=String(x.time||x.at).slice(0,10);return(ui.auditAction==='all'||x.action===ui.auditAction)&&(!ui.auditStart||date>=ui.auditStart)&&(!ui.auditEnd||date<=ui.auditEnd);});
+    return `<section class="panel"><div class="panel-head"><div><h2>ประวัติการใช้งานและเปลี่ยนแปลงข้อมูล</h2><p>บันทึกผู้กระทำ เวลา และรายละเอียด เพื่อสาธิตการตรวจสอบย้อนหลัง</p></div><span class="count-pill">${records.length} รายการ</span></div><div class="toolbar">${search('ค้นหาผู้ใช้ รหัสข้อมูล หรือรายละเอียด')}<select data-change="auditFilter" aria-label="ประเภทการกระทำ"><option value="all">การกระทำทั้งหมด</option>${optionList(actions,ui.auditAction)}</select>${field('ตั้งแต่',`<input type="date" data-change="auditStart" value="${h(ui.auditStart)}">`)}${field('ถึง',`<input type="date" data-change="auditEnd" value="${h(ui.auditEnd)}">`)}</div>${table(['วันเวลา','ผู้กระทำ','การกระทำ','ข้อมูล','รายละเอียด'],records.map(x=>row(`${x.time||x.at} ${x.actor||x.user} ${x.action} ${x.entity} ${x.details}`,[`<span class="mono">${h(x.time||x.at)}</span>`,h(x.actor||x.user||'System'),`<strong>${h(x.action)}</strong>`,`<span class="mono">${h(x.entity||'—')}</span>`,`<span class="audit-detail">${h(typeof x.details==='object'?JSON.stringify(x.details):x.details||'—')}</span>`])).join(''))}</section><p class="helper" style="margin-top:16px">ประวัติสาธิตเก็บในเบราว์เซอร์เครื่องนี้ และจะถูกล้างเมื่อรีเซ็ตข้อมูลตัวอย่าง</p>`;
+  };
+  A.actions.auditFilter=b=>{ui.auditAction=b.value;A.render();};
+  A.actions.auditStart=b=>{if(b.value&&ui.auditEnd&&b.value>ui.auditEnd){A.toast('วันเริ่มต้องไม่อยู่หลังวันสิ้นสุด');b.value=ui.auditStart;return;}ui.auditStart=b.value;A.render();};
+  A.actions.auditEnd=b=>{if(b.value&&ui.auditStart&&b.value<ui.auditStart){A.toast('วันสิ้นสุดต้องไม่อยู่ก่อนวันเริ่ม');b.value=ui.auditEnd;return;}ui.auditEnd=b.value;A.render();};
+})();
+</script><script>AO.init();</script><script>/* Presentation preferences: display-only translations preserve original records. */
+(()=>{
+const pairs=`ภาพรวมปฏิบัติการ|Operations overview
+ทุกเที่ยวบิน ทุกทีม ในมุมมองเดียว|Every flight. Every team. One view.
+เที่ยวบินวันนี้|Flights today
+เที่ยวบินล่าช้า|Delayed flights
+เที่ยวบินที่ต้องติดตาม|Flights requiring attention
+งานบริการภาคพื้น|Ground services
+งานภาคพื้น|Ground operations
+ทรัพยากรสนามบิน|Airport resources
+ทรัพยากรที่จัดสรร|Allocated resources
+บุคลากรและอุปกรณ์|People & equipment
+บัญชีผู้ใช้งาน|User accounts
+การแจ้งเตือน|Notifications
+ผู้โดยสาร|Passengers
+สัมภาระ|Baggage
+เที่ยวบิน|Flights
+รายงานการปฏิบัติการ|Operations report
+รายงาน|Reports
+เวลาจำลอง|Demo time
+สลับบทบาทสาธิต|Switch demo role
+โหมดนำเสนอ · ทุกบทบาท|Presentation · All roles
+คู่มือสาธิต|Demo guide
+พร้อมสำหรับการสาธิต|Ready to present
+ข้อมูลจำลอง · 03 พฤศจิกายน 2026 · BKK|Sample data · 03 November 2026 · BKK
+เริ่มเส้นทางนำเสนอ|Start presentation
+ตารางเที่ยวบิน|Flight schedule
+ภาพรวมประจำวัน · เวลาท้องถิ่นกรุงเทพฯ (UTC+7)|Daily overview · Bangkok local time (UTC+7)
+ดูทั้งหมด|View all
+ดูเที่ยวบิน|View flight
+เส้นทาง|Route
+กำหนดการ|Schedule
+สถานะ|Status
+การดำเนินการ|Actions
+กำลังขึ้นเครื่อง|Boarding
+ตามกำหนด|Scheduled
+ลงจอดแล้ว|Landed
+ล่าช้า|Delayed
+ขาออก|Departures
+ขาเข้า|Arrivals
+ความพร้อมภาคพื้น|Ground readiness
+เชื่อมคน อุปกรณ์ และงานของแต่ละเที่ยวบิน|Connect people, equipment and tasks for each flight
+ต้องติดตาม|Needs attention
+กิจกรรมล่าสุด|Recent activity
+รีเซ็ตข้อมูลตัวอย่าง|Reset sample data
+ออกจากระบบสาธิต|Sign out of demo
+ข้อมูลสมมติ · บันทึกในเบราว์เซอร์|Fictional data · Saved in this browser
+ข้อมูลจำลอง · UTC+7|Sample data · UTC+7
+เพิ่มเที่ยวบิน|Add flight
+แก้ไขเที่ยวบิน|Edit flight
+ลบเที่ยวบิน|Delete flight
+รายละเอียดเที่ยวบิน|Flight details
+รายละเอียด|Details
+ค้นหาเที่ยวบิน สายการบิน หรือเส้นทาง|Search flight, airline or route
+ค้นหาเที่ยวบิน|Search flights
+ทั้งหมด|All
+วันที่|Date
+เวลาตามตาราง|Scheduled time
+เวลาคาดการณ์|Estimated time
+เวลาจริง|Actual time
+ยังไม่บันทึก|Not recorded
+ยังไม่จัดสรร|Unassigned
+ยังไม่มอบหมาย|Unassigned
+สถานะล่าสุด|Latest status
+สถานะสัมภาระ|Baggage status
+อัปเดตเมื่อ|Updated at
+ลำดับเหตุการณ์|Timeline
+เพิ่มเหตุการณ์|Add event
+บันทึกเหตุการณ์|Record event
+ปิด|Close
+ยกเลิก|Cancel
+บันทึกข้อมูล|Save changes
+ยืนยันลบ|Confirm deletion
+ต้นทาง|Origin
+ปลายทาง|Destination
+สายการบิน|Airline
+ประเภท|Type
+อากาศยาน|Aircraft
+เมืองต้นทาง / ปลายทาง|Origin / destination city
+สาเหตุล่าช้า / หมายเหตุ|Delay reason / notes
+พร้อมใช้งาน|Available
+ซ่อมบำรุง|Maintenance
+กำลังใช้งาน|In use
+รอดำเนินการ|Pending
+กำลังดำเนินการ|In progress
+เสร็จสิ้น|Completed
+สำเร็จ|Complete
+งานเสร็จสิ้น|tasks completed
+งานกำลังดำเนินการหรือรอเริ่ม|tasks in progress or pending
+จัดสรรแล้ว|Allocated
+พร้อมจัดสรร|Available to allocate
+จัดสรร|Allocate
+ช่วงเวลา|Time slot
+เวลาเริ่ม|Start time
+เวลาสิ้นสุด|End time
+รายการจัดสรร|Allocations
+ไม่มีการจัดสรร|No allocations
+ค้นหา|Search
+เพิ่มผู้โดยสาร|Add passenger
+แก้ไขผู้โดยสาร|Edit passenger
+ชื่อผู้โดยสาร|Passenger name
+ชื่อ–นามสกุล|Full name
+ชื่อ-นามสกุล|Full name
+หมายเลขหนังสือเดินทาง|Passport number
+ที่นั่ง|Seat
+จองแล้ว|Booked
+เช็กอินแล้ว|Checked in
+ขึ้นเครื่องแล้ว|Boarded
+ไม่มาแสดงตัว|No show
+ลงทะเบียนสัมภาระ|Register baggage
+ค้นหาผู้โดยสารที่เช็กอินแล้ว|Search checked-in passengers
+น้ำหนัก|Weight
+จำนวน|Quantity
+ตรวจสัมภาระ|Screening
+รับสัมภาระ|Received
+ส่งมอบแล้ว|Delivered
+ประวัติ|History
+พิมพ์|Print
+ส่งออก Excel|Export Excel
+พิมพ์ / บันทึก PDF|Print / Save PDF
+ตั้งแต่|From
+ถึง|To
+อัตราตรงต่อเวลา|On-time performance
+กรอง|Filter
+สร้างงาน|Create task
+มอบหมายงาน|Assign task
+เริ่มงาน|Start task
+เสร็จงาน|Complete task
+เพิ่มบุคลากร|Add staff
+เพิ่มอุปกรณ์|Add equipment
+ชื่อ|Name
+ทักษะ|Skills
+อุปกรณ์|Equipment
+บุคลากร|Staff
+ผู้รับผิดชอบ|Assigned to
+เปิดใช้งาน|Active
+ปิดใช้งาน|Inactive
+บทบาทผู้ใช้งาน|User role
+บทบาท|Role
+เพิ่มบัญชี|Add account
+ทำเครื่องหมายอ่านทั้งหมด|Mark all as read
+ทำเครื่องหมายว่าอ่านแล้ว|Mark as read
+รายการยังไม่อ่าน|Unread items
+ไม่มีการแจ้งเตือนใหม่|No new notifications
+เมนูหลัก|Main menu
+เปิดเมนู|Open menu
+เข้าสู่ระบบสาธิต|Enter demo
+เลือกบทบาทเพื่อทดลองขั้นตอนการทำงาน|Choose a role to explore the workflow
+เริ่มใช้งาน|Get started
+เชื่อมการปฏิบัติการสนามบิน|Connected airport operations
+ตั้งแต่เที่ยวบินแรก จนสัมภาระชิ้นสุดท้าย|From the first flight to the last bag
+บันทึกเวลาเริ่มและเสร็จตามเวลาจำลองด้านบน|Start and finish times use the demo clock above
+พ.ย.|Nov
+พฤศจิกายน|November
+คน|people
+ชิ้น|pieces
+รายการ|items`;
+const dictionary=pairs.split('\n').map(l=>l.split('|')).sort((a,b)=>b[0].length-a[0].length);
+let prefs;try{prefs=JSON.parse(localStorage.getItem('aerops-preferences')||'{}')}catch{prefs={}}
+let lang=prefs.language==='en'?'en':'th',theme=['dark','light','system'].includes(prefs.theme)?prefs.theme:'light';
+const originals=new WeakMap(),attributes=new WeakMap(),mq=matchMedia('(prefers-color-scheme: dark)');
+const translate=s=>{if(lang==='th')return s;for(const [th,en]of dictionary)s=s.split(th).join(en);return s};
+const bar=document.createElement('aside');bar.className='preferences-bar';bar.setAttribute('aria-label','Language and appearance');bar.innerHTML='<label><span>Language</span><select aria-label="Language"><option value="th">ไทย</option><option value="en">English</option></select></label><label><span>Theme</span><select aria-label="Theme"><option value="light">☀ Light</option><option value="dark">☾ Dark</option><option value="system">◐ Auto</option></select></label>';
+bar.querySelector('[aria-label="Language"]').value=lang;bar.querySelector('[aria-label="Theme"]').value=theme;document.body.append(bar);
+function apply(){observer.disconnect();document.documentElement.lang=lang;document.documentElement.dataset.theme=theme==='system'?(mq.matches?'dark':'light'):theme;
+const walk=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT);let n;while(n=walk.nextNode()){if(bar.contains(n)||n.parentElement.closest('script,style,textarea,input'))continue;const prior=originals.get(n);const source=prior&&prior.output===n.nodeValue?prior.source:n.nodeValue;const output=translate(source);if(n.nodeValue!==output)n.nodeValue=output;originals.set(n,{source,output});}
+for(const el of document.querySelectorAll('[placeholder],[aria-label],[title]')){if(bar.contains(el))continue;let saved=attributes.get(el)||{};for(const key of ['placeholder','aria-label','title']){if(!el.hasAttribute(key))continue;const value=el.getAttribute(key),prev=saved[key];const source=prev&&prev.output===value?prev.source:value,output=translate(source);if(value!==output)el.setAttribute(key,output);saved[key]={source,output};}attributes.set(el,saved)}observer.observe(document.body,{childList:true,subtree:true,characterData:true});}
+const observer=new MutationObserver(apply);bar.addEventListener('change',()=>{lang=bar.querySelector('[aria-label="Language"]').value;theme=bar.querySelector('[aria-label="Theme"]').value;try{localStorage.setItem('aerops-preferences',JSON.stringify({language:lang,theme}))}catch{}apply()});mq.addEventListener('change',apply);apply();
+})();
+</script>
+</body>
+</html>
