@@ -114,13 +114,3 @@ The gate allocation test records preconditions, input data, steps, expected and 
 ## My contribution
 
 This repository presents our team's coursework as part of my portfolio. I created the use case diagrams and contributed to reviewing data flow diagrams for consistency with system requirements. Other project deliverables were developed collaboratively by the team.
-
-## Run the prototype
-
-Open [`index.html`](index.html) in a browser. No installation or build step is required.
-
-The prototype uses **HTML, CSS, and JavaScript**, with sample data saved in browser `localStorage`. Select a demo role to explore the screens. Authentication and permissions are simulated; there is no live backend, database server, or connection to real airport systems. Browser data is not shared between users or devices.
-
-## AI assistance
-
-As disclosed in the project report, the team used Claude to assist with brainstorming, drafting, diagram consistency reviews, documentation, and prototype code. The team defined the requirements and drafted the diagrams, then reviewed and tested the resulting work.
